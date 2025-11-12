@@ -1,0 +1,7 @@
+name: tr-benchmark
+channels:
+  - bioconda
+dependencies:
+  - python
+  - cyvcf2
+  - defopt

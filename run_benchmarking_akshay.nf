@@ -72,9 +72,8 @@ workflow {
           if (parts.size() < 2)
               throw new IllegalArgumentException("Expected two TAB-separated columns: <bam|cram>\\t<karyotype>; got: '${line}'")
 
-          def alnPath  = parts[0].trim()
-          def karyo    = parts[1].trim()
-          def sex      = (karyo == 'XX') ? 'female' : (karyo == 'XY') ? 'male' : 'unknown'
+          def alnPath   = parts[0].trim()
+          def karyotype = parts[1].trim()
 
           def aln = resolvePath(alnPath)
           if (aln == null)
@@ -92,9 +91,9 @@ workflow {
               throw new IllegalArgumentException("Unsupported file type for ${aln}; expected .bam or .cram")
           }
 
-          tuple(sample, aln, idx, karyo, sex)
+          tuple(sample, aln, idx, karyotype)
       }
-      .set { aligned_samples }   // emits: [sample, alignment_file, index_file, karyotype, sex]
+      .set { aligned_samples }   // emits: [sample, alignment_file, index_file, karyotype]
 
 
 
@@ -105,9 +104,12 @@ workflow {
     // Downstream processes
     // print_aligned_samples(aligned_samples)
     // mosdepth(aligned_samples, ref)
-    strkit(aligned_samples, ref, fai)
+    // strkit(aligned_samples, ref, fai)
+    strkitrr(aligned_samples, ref, fai)
+    // strdust(aligned_samples, ref, fai)
+    // vamos(aligned_samples, ref, fai)
     // longTR(aligned_samples, ref, fai)
-    // straglr(aligned_samples, ref, fai)
+    // medaka(aligned_samples, ref, fai)
 }
 /* -------------------------------------------------------------------------- */
 /* Processes                                                                  */
@@ -118,14 +120,13 @@ process print_aligned_samples {
     memory { 1.GB * task.attempt }
     time { 1.h * task.attempt }
   input:
-    tuple val(sample), path(aln), path(idx), val(karyotype), val(sex)
+    tuple val(sample), path(aln), path(idx), val(karyotype)
   script:
     """
     echo "sample: ${sample}"
     echo "alignment: ${aln}"
     echo "index: ${idx}"
     echo "karyotype: ${karyotype}"
-    echo "sex: ${sex}"
     """
 }
 
@@ -157,16 +158,15 @@ process mosdepth {
 }
 
 process strkit {
-    // conda 'envs/strkit'
 
-    cpus 4
-    memory { 8.GB * task.attempt }
-    time { 4.h * task.attempt }
+    cpus 2
+    memory { 2.GB * task.attempt }
+    time { 2.h * task.attempt }
 
     publishDir variantDir + '/strkit', mode: 'copy'
 
     input:
-    tuple val(sample), path(aln), path(idx)
+    tuple val(sample), path(aln), path(idx), val(karyotype)
     path ref
     path fai
 
@@ -177,13 +177,118 @@ process strkit {
     def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
 
     """
-    strkit call ${aln} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf
+    strkit call ${aln} --min-reads 10 --ploidy ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf
+    """
+}
+
+process strkitrr {
+
+    cpus 2
+    memory { 2.GB * task.attempt }
+    time { 2.h * task.attempt }
+
+    publishDir variantDir + '/strkit', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.strkitrr.vcf"
+
+    script:
+    def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
+
+    """
+    strkit call ${aln} --respect-ref --min-reads 10 --ploidy ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkitrr.vcf
+    """
+}
+
+process strdust {
+
+    cpus 2
+    memory { 2.GB * task.attempt }
+    time { 2.h * task.attempt }
+
+    publishDir variantDir + '/strdust', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.strdust.vcf"
+
+    script:
+    def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
+    def haploid = (karyotype == 'XY') ? "--haploid chrX,chrY" : ""
+
+    """
+    /pl/active/dashnowlab/software/STRdust/target/release/STRdust -R ${strkit_tr_regions} --unphased --support 5 --sample ${sample} \\
+    ${haploid} ${ref} ${aln} > ${sample}.strdust.vcf
+    """
+}
+
+process vamos {
+    conda 'envs/vamos.yaml'
+
+    cpus 2
+    memory { 8.GB * task.attempt }
+    time { 2.h * task.attempt }
+
+    publishDir variantDir + '/vamos', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.vamos.vcf"
+
+    script:
+    def vamos_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.vamos.bed'
+
+    """
+    export LD_LIBRARY_PATH=\${CONDA_PREFIX}/lib:\$LD_LIBRARY_PATH
+    /pl/active/dashnowlab/work/aavvaru/vamos/src/vamos --read -b ${aln} -r ${vamos_tr_regions} -s ${sample} -o ${sample}.vamos.vcf
+    """
+}
+
+process medaka {
+    conda 'envs/medaka-2.1.1.yaml'
+
+    cpus 2
+    memory { 2.GB * task.attempt }
+    time { 2.h * task.attempt }
+
+    publishDir variantDir + '/medaka', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.medaka.vcf"
+
+    script:
+    def medaka_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
+    def sex      = (karyotype == 'XX') ? 'female' : (karyotype == 'XY') ? 'male' : 'unknown'
+
+
+    """
+    medaka tandem --sample_name ${sample} ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf
     """
 }
 
 process longTR {
-    cpus 4
-    memory { 8.GB * task.attempt }
+    conda 'envs/longtr-gcc14-run.yaml'
+
+    cpus 1
+    memory { 4.GB * task.attempt }
     time { 4.h * task.attempt }
 
     publishDir variantDir + '/longtr', mode: 'copy'
@@ -201,8 +306,8 @@ process longTR {
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.longtr.bed'
 
     """
-    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)"
-
+    export LD_LIBRARY_PATH=\${CONDA_PREFIX}/lib:\$LD_LIBRARY_PATH
+    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
     /pl/active/dashnowlab/software/LongTR-1.2/LongTR \\
         --alignment-params ${alignment_params.join(',')} \\
         --fasta ${ref} \\
@@ -211,57 +316,6 @@ process longTR {
         --regions ${tr_regions} \\
         --bams ${aln} \\
         --tr-vcf ${sample}.longTR.vcf.gz
-    """
-}
-
-process straglr {
-    conda 'envs/straglr-1.5.5.yaml'
-
-    cpus 4
-    memory { 8.GB * task.attempt }
-    time { 4.h * task.attempt }
-
-    publishDir variantDir + '/straglr', mode: 'copy'
-
-    input:
-    tuple val(sample), path(aln), path(idx), val(karyotype)
-    path ref
-    path fai
-
-    output:
-    path "${sample}.vcf"
-
-    script:
-    def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strglr.bed'
-
-    """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --min_support 1 --min_cluster_size 1 --max_num_clusters 2 --genotype_in_size --nprocs 4
-    """
-}
-
-process trsv {
-    conda 'envs/straglr-1.5.5.yaml'
-
-    cpus 4
-    memory { 1.GB * task.attempt }
-    time { 1.h * task.attempt }
-
-    publishDir variantDir, mode: 'copy'
-
-    input:
-    tuple val(sample), path(aln), path(idx), val(karyotype)
-    path ref
-    path fai
-
-    output:
-    path "${sample}.vcf"
-
-    script:
-    def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/STRchive-disease-loci.hg38.straglr.bed'
-    def trsv_sif = '/projects/ealiyev@xsede.org/TRsv-v1.1.sif'
-
-    """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --min_support 1 --min_cluster_size 1 --max_num_clusters 2 --genotype_in_size --nprocs 4
     """
 }
 

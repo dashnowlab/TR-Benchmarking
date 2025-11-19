@@ -1,4 +1,6 @@
-/*
+*
+.*
+
 !/catalogs/
 !/catalogs/**
 !/envs/
@@ -8,4 +10,4 @@
 !/README.md
 !/LICENSE
 !/.gitignore
-!/nextflow.config    # uncomment if you want it tracked
+!/nextflow.config

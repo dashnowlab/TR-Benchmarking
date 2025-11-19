@@ -10,7 +10,7 @@
 #SBATCH -J nf-runner
 #SBATCH --mail-type END
 #SBATCH --mail-type FAIL
-#SBATCH --mail-user=elbay.aliyev@cuanschutz.edu
+#SBATCH --mail-user=akshaykumar.avvaru@cuanschutz.edu
 
 module purge
 
@@ -18,11 +18,9 @@ module load nextflow
 module load singularity/3.7.4
 module load miniforge/24.11.3-0
 
-conda activate straglr_1.5.5
-
 # Base directories all tied to out_dir
 BASE="/pl/active/dashnowlab/projects/TR-benchmarking/"
-WORK_DIR="${BASE}/work"
+WORK_DIR="${BASE}/work_akshay"
 ASSETS_DIR="${WORK_DIR}/assets"          # controls projectDir via NXF_ASSETS
 NXFHOME_DIR="${BASE}/.nextflow" # controls Nextflow home/cache
 
@@ -36,6 +34,7 @@ export NXF_ASSETS="${ASSETS_DIR}" # projectDir will be under this
 export NXF_HOME="${NXFHOME_DIR}"  # Nextflow home + session/cache/lock files
 export SINGULARITY_CACHEDIR=${WORK_DIR}/cache
 export NXF_SINGULARITY_CACHEDIR=${WORK_DIR}/cache
+export NXF_CONDA_CACHEDIR=${WORK_DIR}/conda_cache
 
 echo "Running sample: $SAMPLE_NAME"
 echo "launchDir  -> $BASE"
@@ -47,3 +46,7 @@ nextflow run "$@" -profile singularity -w "$WORK_DIR"
 echo "== Nextflow complete =="
 
 # Example usage: sbatch run_benchmarking_slurm.sh run_benchmarking.nf --list test_bam.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -with-overwrite
+# Usage with sbatch:
+# sbatch -J tr_bench -p amilan --qos=normal --time=08:00:00 --mem=2G \
+#        --output=logs/%x_%j.out --error=logs/%x_%j.err \
+#         --wrap="bash run_benchmarking_akshay.sh run_benchmarking_akshay.nf --list ont_bam.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta"

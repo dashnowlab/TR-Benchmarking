@@ -106,7 +106,12 @@ workflow {
     mosdepth(aligned_samples, ref)
     atarva(aligned_samples, ref, fai)
     longTR(aligned_samples, ref, fai)
+    medaka(aligned_samples, ref, fai)
     straglr(aligned_samples, ref, fai)
+    strdust(aligned_samples, ref, fai)
+    strkit(aligned_samples, ref, fai)
+    vamos(aligned_samples, ref, fai)
+    
 }
 /* -------------------------------------------------------------------------- */
 /* Processes                                                                  */
@@ -126,10 +131,9 @@ process print_aligned_samples {
     echo "karyotype: ${karyotype}"
     """
 }
-
+ 
 // Calculate sequencing depth
 process mosdepth {
-
     container 'oras://community.wave.seqera.io/library/mosdepth:0.3.10--21ace4b9c76a055d'
 
     memory { 8.GB * task.attempt }
@@ -155,10 +159,11 @@ process mosdepth {
 }
 
 process atarva {
-    conda 'envs/atarva-3.0.0.yaml'
+    //conda 'envs/atarva-3.0.0.yaml'
+    container 'dhaksnamoorthy/atarva:v0.3.1'
 
-    cpus 4
-    memory { 8.GB * task.attempt }
+    cpus 1
+    memory { 4.GB * task.attempt }
     time { 4.h * task.attempt }
 
     publishDir variantDir + '/atarva', mode: 'copy'
@@ -175,13 +180,15 @@ process atarva {
     def atarva_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.atarva.bed.gz'
 
     """
-    atarva -t 4 -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram --haplotag HP --min-reads 1 --karyotype ${karyotype} -o ${sample}.atarva.vcf
+    atarva -t 1 -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram --haplotag HP --min-reads 1 --karyotype ${karyotype} -o ${sample}.atarva.vcf
     """
 }
 
 process longTR {
-    cpus 4
-    memory { 8.GB * task.attempt }
+    container 'community.wave.seqera.io/library/longtr:1.2--3a7af9434e146eab'
+
+    cpus 1
+    memory { 4.GB * task.attempt }
     time { 4.h * task.attempt }
 
     publishDir variantDir + '/longtr', mode: 'copy'
@@ -199,9 +206,9 @@ process longTR {
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.longtr.bed'
 
     """
-    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)"
-
-    /pl/active/dashnowlab/software/LongTR-1.2/LongTR \\
+    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
+    LongTR --help;
+    LongTR \\
         --alignment-params ${alignment_params.join(',')} \\
         --fasta ${ref} \\
         --min-reads 1 \\
@@ -213,10 +220,10 @@ process longTR {
 }
 
 process straglr {
-    conda 'envs/straglr-1.5.5.yaml'
+    container 'community.wave.seqera.io/library/straglr:1.5.5--d8ea229ed1f78ec0'
 
-    cpus 4
-    memory { 8.GB * task.attempt }
+    cpus 1
+    memory { 4.GB * task.attempt }
     time { 4.h * task.attempt }
 
     publishDir variantDir + '/straglr', mode: 'copy'
@@ -233,18 +240,18 @@ process straglr {
     def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strglr.bed'
 
     """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --min_support 1 --min_cluster_size 1 --max_num_clusters 2 --genotype_in_size --nprocs 4
+    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --min_support 1 --min_cluster_size 1 --max_num_clusters 2 --genotype_in_size --nprocs 1
     """
 }
 
-process trsv {
-    conda 'envs/straglr-1.5.5.yaml'
+process strkit {
+    container 'ghcr.io/davidlougheed/strkit:0.24.2'
+    
+    cpus 1
+    memory { 4.GB * task.attempt }
+    time { 4.h * task.attempt }
 
-    cpus 4
-    memory { 1.GB * task.attempt }
-    time { 1.h * task.attempt }
-
-    publishDir variantDir, mode: 'copy'
+    publishDir variantDir + '/strkit', mode: 'copy'
 
     input:
     tuple val(sample), path(aln), path(idx), val(karyotype)
@@ -252,14 +259,89 @@ process trsv {
     path fai
 
     output:
-    path "${sample}.vcf"
+    path "${sample}.strkit.vcf"
 
     script:
-    def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/STRchive-disease-loci.hg38.straglr.bed'
-    def trsv_sif = '/projects/ealiyev@xsede.org/TRsv-v1.1.sif'
+    def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
 
     """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --min_support 1 --min_cluster_size 1 --max_num_clusters 2 --genotype_in_size --nprocs 4
+    strkit call ${aln} --min-reads 10 --ploidy ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf
     """
 }
 
+process strdust {
+
+    cpus 1
+    memory { 4.GB * task.attempt }
+    time { 4.h * task.attempt }
+
+    publishDir variantDir + '/strdust', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.strdust.vcf"
+
+    script:
+    def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
+    def haploid = (karyotype == 'XY') ? "--haploid chrX,chrY" : ""
+
+    """
+    /pl/active/dashnowlab/software/STRdust/target/release/STRdust -R ${strkit_tr_regions} --unphased --support 5 --sample ${sample} \\
+    ${haploid} ${ref} ${aln} > ${sample}.strdust.vcf
+    """
+}
+
+process vamos {
+    container 'community.wave.seqera.io/library/vamos:2.1.7--45fcc86e7cdc4363'
+
+    cpus 2
+    memory { 8.GB * task.attempt }
+    time { 2.h * task.attempt }
+
+    publishDir variantDir + '/vamos', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.vamos.vcf"
+
+    script:
+    def vamos_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.vamos.bed'
+
+    """
+    vamos --read -b ${aln} -r ${vamos_tr_regions} -s ${sample} -o ${sample}.vamos.vcf
+    """
+}
+
+process medaka {
+    conda 'envs/medaka-2.1.1.yaml'
+
+    cpus 1
+    memory { 4.GB * task.attempt }
+    time { 4.h * task.attempt }
+
+    publishDir variantDir + '/medaka', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.medaka.vcf"
+
+    script:
+    def medaka_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/test-isolated-vc-catalog.strkit.bed'
+    def sex      = (karyotype == 'XX') ? 'female' : (karyotype == 'XY') ? 'male' : 'unknown'
+
+    """
+    medaka tandem --sample_name ${sample} ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf
+    """
+}

@@ -18,32 +18,16 @@ module load nextflow
 module load singularity/3.7.4
 module load miniforge/24.11.3-0
 
-conda activate straglr_1.5.5
-
 # Base directories all tied to out_dir
 BASE="/pl/active/dashnowlab/projects/TR-benchmarking/"
-WORK_DIR="${BASE}/work"
-ASSETS_DIR="${WORK_DIR}/assets"          # controls projectDir via NXF_ASSETS
-NXFHOME_DIR="${BASE}/.nextflow" # controls Nextflow home/cache
+WORK_DIR="${BASE}/work_elbay"
 
 # Ensure dirs exist
-mkdir -p "$WORK_DIR" "$ASSETS_DIR" "$NXFHOME_DIR" "$WORK_DIR/tmp" "$WORK_DIR/cache" "$WORK_DIR/logs"
+#mkdir -p "$WORK_DIR" "$ASSETS_DIR" "$NXFHOME_DIR" "$WORK_DIR/tmp" "$WORK_DIR/cache" "$WORK_DIR/logs"
 
-# Environment for Singularity & Nextflow
-export TMPDIR="${WORK_DIR}/tmp"
-export NXF_WORK="${WORK_DIR}"     # workDir
-export NXF_ASSETS="${ASSETS_DIR}" # projectDir will be under this
-export NXF_HOME="${NXFHOME_DIR}"  # Nextflow home + session/cache/lock files
-export SINGULARITY_CACHEDIR=${WORK_DIR}/cache
-export NXF_SINGULARITY_CACHEDIR=${WORK_DIR}/cache
-
-echo "Running sample: $SAMPLE_NAME"
-echo "launchDir  -> $BASE"
-echo "workDir    -> $WORK_DIR"
-echo "projectDir -> (under) $ASSETS_DIR"
 
 echo "== Starting nextflow =="
-nextflow run "$@" -profile singularity -w "$WORK_DIR"
+nextflow run "$@" -profile singularity -w "$WORK_DIR" -resume
 echo "== Nextflow complete =="
 
 # Example usage: sbatch run_benchmarking_slurm.sh run_benchmarking.nf --list test_bam.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -with-overwrite

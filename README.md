@@ -1,6 +1,6 @@
-# TR-Benchmarking — Quick Run
+# TR-Benchmarking
 
-This repo provides a Slurm one-liner to launch the Nextflow benchmarking workflow.
+Tandem repeat benchmarking project.
 
 ## Run Nextflow
 
@@ -69,4 +69,6 @@ while IFS=$'\t' read -r CRAM KARYOTYPE; do
   SAMPLE="${SAMPLE%.cram}"
   sbatch -J "trsv_${SAMPLE}" run_trsv.sh "$CRAM" "$KARYOTYPE"
 done < test_bam.list
+
 ```
+

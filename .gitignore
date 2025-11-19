@@ -11,3 +11,5 @@
 !/LICENSE
 !/.gitignore
 !/nextflow.config
+!/scripts/
+!/scripts/**

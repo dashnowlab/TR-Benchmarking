@@ -9,3 +9,5 @@
 !/LICENSE
 !/.gitignore
 !/nextflow.config    # uncomment if you want it tracked
+!/scripts/
+!/scripts/**

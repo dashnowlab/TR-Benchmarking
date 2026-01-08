@@ -7,7 +7,7 @@ from helpers.utils import *
 
 # set directory variables for easy file i/o while testing
 PROJ_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(PROJ_ROOT, 'catalogs')
+DATA_DIR = os.path.join(PROJ_ROOT, 'local_data')
 LOCAL = os.path.join(PROJ_ROOT, 'scripts\\VCF_Comparisons')
 #LOCAL = os.path.join(PROJ_ROOT, 'local_data')
 

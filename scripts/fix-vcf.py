@@ -48,7 +48,7 @@ def fix_row(row, fasta):
     end_pos = int(info_field.split("END=")[1].split(";")[0])
     sample_field = fields[9]
     genotype = sample_field.split(":")[0]
-    alt_alleles = sample_field.split(":")[1].split(":")
+    alt_alleles = sample_field.split(":")[1:]
     ref_allele = fetch_ref_allele(chrom, start_pos, end_pos, fasta)
 
     fields[3] = ref_allele
@@ -78,6 +78,8 @@ def fix_row(row, fasta):
         genotype_list = ['0', '1']
     elif genotype_list == ['2', '2']:
         genotype_list = ['1', '1']
+    elif genotype_list == ['1', '0'] and sep == '/': # Only swap if unphased
+        genotype_list = ['0', '1']
 
     # Update the fields
     if len(alt_alleles) == 0:

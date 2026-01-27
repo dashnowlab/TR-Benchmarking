@@ -1,0 +1,7 @@
+name: seq_comp_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python
+  - levenshtein

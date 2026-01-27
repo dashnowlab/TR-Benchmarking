@@ -5,3 +5,4 @@ dependencies:
   - python
   - cyvcf2
   - defopt
+  - pysam

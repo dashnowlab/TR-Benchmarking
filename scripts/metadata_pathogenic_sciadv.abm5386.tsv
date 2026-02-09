@@ -1,0 +1,152 @@
+CRAM	Sample ID	Source	Consent	Ethics / Governance	sex_SRA	Sex	AGE_SRA	Age Range	Known expansion	Molecular Testing	Southern	RP-PCR	Remarks	ONT sequencing	Downloaded	on SRA	SRA Bioproject	Instrument	tissue	Notes	Molecular_allele1_bp	Molecular_allele2_bp	Molecular_allele1_type	Molecular_allele2_type	Motif_size			
+CD00014.cram	CD00014	"Coriell Institute, US"	public	Centers for Disease Control and Prevention Repository	male	M	5	0-5	FMR1	56(CGG)	N	Y	FMR1 premutation; clinically unknown	54(CGG)	Y	Y	PRJNA786382	MinION_GridION	Blood		168	NA	lowerbound	NA	3			
+CD00022.cram	CD00022	"Coriell Institute, US"	public	Centers for Disease Control and Prevention Repository	female	F	28	26-30	HTT	31(CAG)/18(CAG)	N	Y	HTT negative; clinically unknown	31(CAG)/20(CAG)	Y	Y	PRJNA786382	GridION	Blood		93	54	estimate	estimate	3			
+MB382.cram	MB382	"Westmead Hospital, NSW"	public	2019/ETH12538	female	F	65	61-65	NOTCH2NLC	11(GGC)/>106(GGC)	N	Y	NOTCH2NLC positive; clinically affected with family history (NIID)	15(GGC)/127(GGC)	Y	Y	PRJNA786382	MinION	Blood		33	318	estimate	lowerbound	3			
+NA03697.cram	NA03697	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	17	16-20	DMPK	<500(CTG)	N	Y	DMPK positive; clinically affected with family history	12(CTG)/440(CTG/CAG)	Y	Y	PRJNA786382	MinION	Blood		1500	NA	upperbound	NA	3			
+NA04026.cram	NA04026	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	35	31-35	FMR1	>200(CGG)	N	Y	FMR1 expansion; clinically affected with family history;Confirmed expansion exceeds upper size limit of RP-PCR test	654(CGG)	Y	Y	PRJNA786382	GridION	Blood		600	NA	lowerbound	NA	3			
+NA05131.cram	NA05131	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	3	0-5	FMR1	>200(CGG)	N	Y	FMR1 expansion; clinically affected with family history; Confirmed expansion exceeds upper size limit of RP-PCR test	606(CGG)	Y	Y	PRJNA786382	MinION	Blood		600	NA	estimate	NA	3			
+NA06890.cram	NA06890	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	19	16-20	FMR1	30(CGG)	N	Y	FMR1 negative; clinically normal with  family history	30(CGG)	Y	Y	PRJNA786382	GridION	Blood		90	NA	estimate	NA	3			
+NA06893.cram	NA06893	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	12	11-15	FMR1	30(CGG)/23(CGG)	N	Y	FMR1 negative; clinically normal with family history	32(CGG)/23(CGG)	Y	Y	PRJNA786382	MinION	Blood		90	69	estimate	estimate	3			
+NA06905.cram	NA06905	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	72	71-75	FMR1 	70(CGG)/23(CGG)	N	Y	FMR1 premutation carrier; clinically normal with family history	80(CGG)/23(CGG)	Y	Y	PRJNA786382	MinION	Blood		210	69	estimate	estimate	3			
+NA12878-HG001.cram	NA12878	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	not collected	NA	NA	NA	N	N	Unaffected individual; GIAB human reference sample HG001	NA	Y	Y	PRJNA786382	MinION	Blood		NA	NA	NA	NA	3			
+NA13505.cram	NA13505	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	not collected	NA	HTT	50(CAG)/22(CAG)	N	Y	HTT expansion; clinically affected	52(CAG)/23(CAG)	Y	Y	PRJNA786382	GridION	Blood		150	66	estimate	estimate	3			
+NA13507.cram	NA13507	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	not collected	NA	HTT	55(CAG)/15(CAG)	N	Y	HTT expansion; clinically affected	55(CAG)/17(CAG)	Y	Y	PRJNA786382	MinION	Blood		165	45	estimate	estimate	3			
+NA13509.cram	NA13509	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	not collected	NA	HTT	70(CAG)/15(CAG)	N	Y	HTT expansion; clinically affected	74(CAG)/16(CAG)	Y	Y	PRJNA786382	MinION_GridION	Blood		210	45	estimate	estimate	3			
+NA13512.cram	NA13512	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	not collected	NA	HTT	44(CAG)/16(CAG)	N	Y	HTT expansion; clinically affected	46(CAG)/18(CAG)	Y	Y	PRJNA786382	GridION	Blood		132	48	estimate	estimate	3			
+NA13515.cram	NA13515	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	not collected	NA	HTT	66(CAG)/16(CAG)	N	Y	HTT expansion; clinically affected	64(CAG)/18(CAG)	Y	Y	PRJNA786382	MinION	Blood		198	48	estimate	estimate	3			
+NA13537.cram	NA13537	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	37	36-40	ATXN1	60(CAG)/32(CAG)	N	Y	ATXN1 positive; clinically affected SCA1	60(CAG)/31(CAG)	Y	Y	PRJNA786382	MinION	Blood		180	96	estimate	estimate	3			
+NA15850.cram	NA15850	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	13	11-15	FXN	1030(CTG)/650(CTG)	Y	Y	FA positive; clinically affected with family history	1100(GAA)/650(GAA)	Y	Y	PRJNA786382	MinION	Blood		3090	1950	estimate	estimate	3			
+NA16213.cram	NA16213	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	76	76-80	FXN	420(CTG)	Y	Y	"FA carrier; clinically unaffected, father of affected son"	482(GAA)/8(GAA)	Y	Y	PRJNA786382	MinION	Blood		1260	NA	estimate	NA	3			
+NA16215.cram	NA16215	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	41	41-45	FXN	830(CTG)	Y	Y	"FA carrier; clinically unaffected, mother of affected son"	990(GAA)/25(GAA)	Y	Y	PRJNA786382	MinION	Blood		2490	NA	estimate	NA	3			
+NA23265.cram	NA23265	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	56	56-60	DMPK	60(CTG)/12(CTG)	N	Y	DMPK positive; clinically affected with family history	76(CTG)/12(CTG)	Y	Y	PRJNA786382	MinION	Blood		180	36	estimate	estimate	3			
+NA23378.cram	NA23378	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	65	61-65	DMPK	80-90(CTG)	N	Y	"DMPK positive; clinically affected with family history, age of onset 50"	22(CTG)/130(CTG)	Y	Y	PRJNA786382	MinION	Blood		255	NA	estimate	NA	3			
+NA23629.cram	NA23629	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F	51	51-55	PABPN1	9(GCG)/6(GCG)	N	Y	PABPN1 positive; clinically affected with family history	9(GCG)/6(GCG)	Y	Y	PRJNA786382	MinION	Blood		27	18	estimate	estimate	3			
+NA24385-HG002.cram	NA24385	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	male	M	45	41-45	NA	NA	N	N	Unaffected individual; GIAB human reference sample HG002	NA	Y	Y	PRJNA786382	MinION_GridION	Blood		NA	NA	NA	NA	3			
+ND14339.cram	ND14339	"Coriell Institute, US"	public	NIGMS Human Genetic Cell Repository	female	F 	75	71-75	C9orf72	>100(GGGGCC)	N	Y	C9orf72 positive; clinically affected (ALS) with family history; Confirmed expansion exceeds upper size limit of RP-PCR test	1070(GGGGCC)/?	Y	Y	PRJNA786382	MinION	Blood		600	NA	lowerbound	NA	6			
+R170070.cram	R170070	"Concord Hospital, NSW"	public		not collected	M	not collected								Y	Y	PRJNA786382	MinION	Blood	Sex inferred from cram	NA	NA	NA	NA				
+R190082.cram	R190082	"Concord Hospital, NSW"	public		female	F	67	67	RFC1				"RFC1 positive (R19982); clinically affected, age of onset 54yo"		Y	Y	PRJNA786382	GridION	Blood		NA	NA	NA	NA	3			
+R210005.cram	R210005	"Concord Hospital, NSW"	public	2019/ETH12538	male	M	73	71-75	RFC1	1000(AAGGG)/1000(AAGGG)	Y	Y	"RFC1 positive (R19955); clinically affected, age of onset 58yo"	965(AAAGG)/1012(AAGGG)	Y	Y	PRJNA786382	MinION	Blood		5000	5000	estimate	estimate	5			
+R210020.cram	R210020	"Concord Hospital, NSW"	public	2019/ETH12538	male	M	77	76-80	RFC1	>100(AAGGG)	N	Y	"RFC1 positive; clinically affected, age of onset 13yo; Confirmed expansion exceeds upper size limit of RP-PCR test"	823(AAGGG)/808(AAGGG)	Y	Y	PRJNA786382	MinION	Blood		500	NA	lowerbound	NA	5			
+R210023.cram	R210023	"Concord Hospital, NSW"	public	2019/ETH12538	male	M	61	61-65	RFC1	>100(AAGGG)	N	Y	"RFC1 positive; clinically affected, age of onset 46yo; Confirmed expansion exceeds upper size limit of RP-PCR test"	1070(AAGGG)/976(AAGGG)	Y	Y	PRJNA786382	GridION	Blood		500	NA	lowerbound	NA	5			
+R210028.cram	R210028	"Concord Hospital, NSW"	public	2019/ETH12538	female	F	22	21-25	DMPK	13(CTG)/~700(CTG)	Y	Y	DMPK positive; clinically affected	13(CTG)/815(CTG)	Y	Y	PRJNA786382	MinION	Blood		39	2100	estimate	estimate	3			
+R210029.cram	R210029	"Concord Hospital, NSW"	public	2019/ETH12538	male	M	18	16-20	DMPK	12(CTG)/48(CTG)	N	Y	DMPK negative; clinically unaffected with DM1 family history	12(CTG)/47(CTG)	Y	Y	PRJNA786382	MinION	Blood		36	144	estimate	estimate	3			
+	PER18C01W	"Harry Perkins Institute, WA"		RA/4/20/1008		M		56-60	RFC1	120(AAAAG)	N	Y	RFC1 negative; clinically unaffected	110(AAAAG)/109(AAAAG)	N	N					600	NA	estimate	NA	5			
+	PER19S01C	"Harry Perkins Institute, WA"		RA/4/20/1008		F		56-60	SBMA	26(CAG)/44(CAG)	N	Y	SBMA carrier; clinically unaffected	26(CAG)/38(CAG)	N	N					78	132	estimate	estimate	3			
+	PER19S02A	"Harry Perkins Institute, WA"		RA/4/20/1008		M		76-80	SBMA	43(CAG)	N	Y	SBMA positive; clinically affected	42(CAG)	N	N					129	NA	estimate	NA	3			
+	PER20D01A	"Harry Perkins Institute, WA"		RA/4/20/1008		M		36-40	DMPK	11-13(CTG)/>130(CTG)	N	Y	DMPK positive; clinically affected; Confirmed expansion exceeds upper size limit of RP-PCR test	11(CTG)/550(CTG/GAA)	N	N					36	390	estimate	lowerbound	3			
+	PER20F02A	"Harry Perkins Institute, WA"		RA/4/20/1008		F		26-30	FXN	440(GAA)/940(GAA) +/- 50	Y	Y	FA positive; clinically affected	529(GAA)/812(GAA)	N	N					1320	2820	estimate	estimate	3			
+	R060355	"Concord Hospital, NSW"		2019/ETH12538		M		61-65	RFC1	500(AAGGG)/800(AAGGG)	Y	Y	"RFC1 positive (R60355); clinically affected , age of onset 41yo"	510(AAGGG)/749(AAGGG)	N	N					2500	4000	estimate	estimate	5			
+	R110358	"Concord Hospital, NSW"		2019/ETH12538		M		56-60	RFC1	300(AAGGG)/1100(AAGGG)	Y	Y	"RFC1 positive (R110358); cilnically affected with family history, age of onset 50yo"	414(AAGGG)/844(AAGGG)	N	N					1500	5500	estimate	estimate	5			
+	R19982	"Concord Hospital, NSW"		2019/ETH12538		F		66-70	RFC1	1000(AAGGG)/1000(AAGGG)	Y	Y	"RFC1 positive (R19982); clinically affected, age of onset 54yo"	863(AAGGG)/980(AAGGG)	N	N					5000	5000	estimate	estimate	5			
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												
+																												

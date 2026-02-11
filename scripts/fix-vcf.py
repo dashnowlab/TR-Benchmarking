@@ -1,249 +1,134 @@
+#!/usr/bin/env python3
 import argparse
-import os
 import sys
 import pysam
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Process some VCF files.")
+    parser = argparse.ArgumentParser(description="Fix STR/VNTR VCF rows using sample alleles + reference FASTA.")
     parser.add_argument("input", help="Input VCF file")
     parser.add_argument("output", help="Output VCF file")
-    parser.add_argument("--ref", required=True, help="Reference FASTA file (required)")
+    parser.add_argument("--ref", required=True, help="Reference FASTA file (indexed .fai required)")
     args = parser.parse_args()
 
-    # Use pysam for indexed access. pysam.fetch uses 0-based start, end-exclusive
     fasta = pysam.FastaFile(args.ref)
 
     with open(args.input, "r") as infile, open(args.output, "w") as outfile:
         for line in infile:
             if line.startswith("#"):
                 outfile.write(line)
-            else:
-                fixed_line = fix_row(line, fasta)
-                outfile.write(fixed_line + "\n")
+                continue
+
+            fixed = fix_row(line, fasta)
+            outfile.write(fixed + "\n")
 
 
-def fix_row(row, fasta):
+def fix_row(row: str, fasta: pysam.FastaFile) -> str:
     """
-    Sample input data
-    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
-    chr1    296009  .       N       <VNTR>  .       PASS    END=296026;RU=AT;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0;LEN_H1=9;      GT      1/1:TTATATATAAATATATA
-    chr1    2061674 .       N       <VNTR>  .       PASS    END=2061690;RU=GCCCT,AGGGC;SVTYPE=STR;ALTANNO_H1=0-0-0;LEN_H1=3;
-        GT      1/1:AGCCCTGCCCTGCCCT
-    chr1    6023939 .       N       <VNTR>  .       PASS    END=6023955;RU=T,A;SVTYPE=STR;ALTANNO_H1=1-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=14;ALTANNO_H2=1-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=15;      GT      1/2:ATTTTTTTTTTTTT:ATTTTTTTTTTTTTT
-    chr1    11509478        .       N       <VNTR>  .       PASS    END=11509490;RU=GA,AG;SVTYPE=STR;ALTANNO_H1=1-1-1-1-1-1;LEN_H1=6;ALTANNO_H2=1-1-1-1-1-1-1-1;LEN_H2=8;   GT      1/2:TGAGAGAGAGAG:TGAGAGAGAGAGAGAG
+    Expects VCF with at least 10 columns:
+      CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE
 
-    Sample output data
-    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
-    chr1    296009  .       TTATATATAAATATATAT       TTATATATAAATATATA  .       PASS    END=296026;RU=AT;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0;LEN_H1=9;      GT      1/1
-    chr1    2061674 .       AGCCCTGCCCTGCCCTG       AGCCCTGCCCTGCCCT  .       PASS    END=2061690;RU=GCCCT,AGGGC;SVTYPE=STR;ALTANNO_H1=0-0-0;LEN_H1=3;
-        GT      1/1
-    chr1    6023939 .       ATTTTTTTTTTTTTTTT       ATTTTTTTTTTTTT,ATTTTTTTTTTTTTT  .       PASS    END=6023955;RU=T,A;SVTYPE=STR;ALTANNO_H1=1-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=14;ALTANNO_H2=1-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=15;      GT      1/2
-    chr1    11509478        .       TGAGAGAGAGAGA       TGAGAGAGAGAG,TGAGAGAGAGAGAGAG  .       PASS    END=11509490;RU=GA,AG;SVTYPE=STR;ALTANNO_H1=1-1-1-1-1-1;LEN_H1=6;ALTANNO_H2=1-1-1-1-1-1-1-1;LEN_H2=8;   GT      1/2
+    Sample field assumed to be like:
+      GT:ALLELE1:ALLELE2...
+    where ALLELE1/2 are the actual sequences to use as ALT alleles.
     """
 
-    fields = row.strip().split("\t")
+    fields = row.rstrip("\n").split("\t")
+    if len(fields) < 10:
+        return row.rstrip("\n")  # not a standard VCF data line; leave unchanged
+
     chrom = fields[0]
-    start_pos = int(fields[1])
+    start_pos = int(fields[1])  # 1-based POS
     info_field = fields[7]
 
-    # VAMOS alleles are consistently 1 bp shorter than the ref with the last bp missing so I think this resolves it
-    end_pos = int(info_field.split("END=")[1].split(";")[0])
-    end_pos -= 1
-    # Replace the adjusted END position in the INFO field
-    info_field = info_field.replace(f"END={end_pos + 1}", f"END={end_pos}")
+    # Parse END from INFO (required for your logic)
+    # Adjust END by -1 (your VAMOS-specific fix)
+    # and update INFO END accordingly
+    try:
+        end_str = info_field.split("END=")[1].split(";")[0]
+        end_pos = int(end_str)
+    except Exception:
+        # If END isn't present/parsable, we cannot fetch reference properly; leave unchanged
+        return row.rstrip("\n")
+
+    # Apply your correction: END -= 1
+    end_pos_adj = end_pos - 1
+    # Replace only the first END occurrence safely
+    info_field = info_field.replace(f"END={end_pos}", f"END={end_pos_adj}", 1)
 
     sample_field = fields[9]
-    genotype = sample_field.split(":")[0]
-    alt_alleles = sample_field.split(":")[1:]
-    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos, fasta)
+    parts = sample_field.split(":")
+    genotype = parts[0]
+    alt_alleles = parts[1:]  # sequences from sample columns (may be empty)
 
+    # Fetch reference allele (inclusive end; pysam fetch is 0-based start, end-exclusive)
+    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos_adj, fasta)
+
+    # Set REF and ALT from sequences
     fields[3] = ref_allele
-    fields[4] = ",".join(alt_alleles)
-    fields[9] = sample_field.split(":")[0]  # Keep only genotype information
+    fields[4] = "." if len(alt_alleles) == 0 else ",".join(alt_alleles)
 
-    # Check which separator is used
-    if '|' in genotype:
-        sep = '|'
-    else:
-        sep = '/'
+    # Determine genotype separator
+    sep = "|" if "|" in genotype else "/"
     genotype_list = genotype.split(sep)
 
-    # Check if any of the ALT alleles match the REF allele
-    for i, alt_allele in enumerate(alt_alleles):
-        if alt_allele == ref_allele:
-            # Change this allele in the genotype to REF (0)
-            genotype_list = ['0' if g == str(i + 1) else g for g in genotype_list]
-            # Remove this ALT allele
+    # If any ALT allele equals REF, convert that allele index to 0 and remove that ALT
+    # NOTE: removing elements while iterating => use while loop
+    i = 0
+    while i < len(alt_alleles):
+        if alt_alleles[i] == ref_allele:
+            # remap genotype: allele i+1 becomes 0
+            old_idx = str(i + 1)
+            genotype_list = ["0" if g == old_idx else g for g in genotype_list]
+
+            # remove the ALT allele
             del alt_alleles[i]
-            # Replace corresponding ALTANNO_H1 and LEN_H1 fields in INFO so they refer to the ref allele
-            info_field = info_field.replace(f"ALTANNO_H{i + 1}", f"ALTANNO_H0")
-            info_field = info_field.replace(f"LEN_H{i + 1}", f"LEN_H0")
 
-    # If the remaining genotypes contain skip sequencial alleles (e.g. 0/2), fix them
-    if genotype_list == ['0', '2']:
-        genotype_list = ['0', '1']
-    elif genotype_list == ['2', '2']:
-        genotype_list = ['1', '1']
-    elif genotype_list == ['1', '0'] and sep == '/': # Only swap if unphased
-        genotype_list = ['0', '1']
+            # update INFO fields ALTANNO_Hx / LEN_Hx to ALTANNO_H0 / LEN_H0
+            # (kept as your original intent; simple string replace)
+            info_field = info_field.replace(f"ALTANNO_H{i + 1}", "ALTANNO_H0")
+            info_field = info_field.replace(f"LEN_H{i + 1}", "LEN_H0")
 
-    # Update the fields
-    if len(alt_alleles) == 0:
-        fields[4] = "."
-    else:
-        fields[4] = ",".join(alt_alleles)
+            # do NOT increment i because list shifted
+            continue
+        i += 1
+
+    # Fix skipped sequential alleles after removals (your specific cases)
+    if genotype_list == ["0", "2"]:
+        genotype_list = ["0", "1"]
+    elif genotype_list == ["2", "2"]:
+        genotype_list = ["1", "1"]
+    elif genotype_list == ["1", "0"] and sep == "/":  # only swap if unphased
+        genotype_list = ["0", "1"]
+
+    # Update ALT field after potential removals
+    fields[4] = "." if len(alt_alleles) == 0 else ",".join(alt_alleles)
+
+    # Write updated INFO and SAMPLE (GT only)
     fields[7] = info_field
     fields[9] = sep.join(genotype_list)
 
     return "\t".join(fields)
 
-def fetch_ref_allele(chrom, start, end, fasta):
+
+def fetch_ref_allele(chrom: str, start: int, end: int, fasta: pysam.FastaFile) -> str:
     """
-    Fetch reference sequence for a given region from a FASTA file.
+    Fetch reference sequence from FASTA.
+      start: 1-based inclusive
+      end:   1-based inclusive
 
-    Args:
-        chrom (str): chromosome name as in VCF (e.g. 'chr1' or '1')
-        start (int): 1-based start position
-        end (int): 1-based end position (inclusive)
-        fasta
-
-    Behavior:
-        Attempts to use pysam.FastaFile if available for fast indexed access. If pysam
-        is not installed, falls back to loading the whole FASTA into memory (simple)
-        and returns the requested slice. The FASTA path must be provided via the
-        --ref CLI argument or the REF_FASTA environment variable.
+    pysam.fetch(chrom, start0, end0) uses:
+      start0: 0-based inclusive
+      end0:   0-based exclusive
+    so we pass (start-1, end) to include end base.
     """
     try:
         seq = fasta.fetch(chrom, start - 1, end)
+        return seq.upper()
     except Exception as e:
-        seq = 'N'
         sys.stderr.write(f"Error fetching {chrom}:{start}-{end}: {e}\n")
+        return "N"
 
-    return seq.upper()
-
-if __name__ == "__main__":
-import argparse
-import os
-import sys
-import pysam
-
-def main():
-    parser = argparse.ArgumentParser(description="Process some VCF files.")
-    parser.add_argument("input", help="Input VCF file")
-    parser.add_argument("output", help="Output VCF file")
-    parser.add_argument("--ref", required=True, help="Reference FASTA file (required)")
-    args = parser.parse_args()
-
-    # Use pysam for indexed access. pysam.fetch uses 0-based start, end-exclusive
-    fasta = pysam.FastaFile(args.ref)
-
-    with open(args.input, "r") as infile, open(args.output, "w") as outfile:
-        for line in infile:
-            if line.startswith("#"):
-                outfile.write(line)
-            else:
-                fixed_line = fix_row(line, fasta)
-                outfile.write(fixed_line + "\n")
-
-
-def fix_row(row, fasta):
-    """
-    Sample input data
-    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
-    chr1    296009  .       N       <VNTR>  .       PASS    END=296026;RU=AT;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0;LEN_H1=9;      GT      1/1:TTATATATAAATATATA
-    chr1    2061674 .       N       <VNTR>  .       PASS    END=2061690;RU=GCCCT,AGGGC;SVTYPE=STR;ALTANNO_H1=0-0-0;LEN_H1=3;
-        GT      1/1:AGCCCTGCCCTGCCCT
-    chr1    6023939 .       N       <VNTR>  .       PASS    END=6023955;RU=T,A;SVTYPE=STR;ALTANNO_H1=1-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=14;ALTANNO_H2=1-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=15;      GT      1/2:ATTTTTTTTTTTTT:ATTTTTTTTTTTTTT
-    chr1    11509478        .       N       <VNTR>  .       PASS    END=11509490;RU=GA,AG;SVTYPE=STR;ALTANNO_H1=1-1-1-1-1-1;LEN_H1=6;ALTANNO_H2=1-1-1-1-1-1-1-1;LEN_H2=8;   GT      1/2:TGAGAGAGAGAG:TGAGAGAGAGAGAGAG
-
-    Sample output data
-    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
-    chr1    296009  .       TTATATATAAATATATAT       TTATATATAAATATATA  .       PASS    END=296026;RU=AT;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0;LEN_H1=9;      GT      1/1
-    chr1    2061674 .       AGCCCTGCCCTGCCCTG       AGCCCTGCCCTGCCCT  .       PASS    END=2061690;RU=GCCCT,AGGGC;SVTYPE=STR;ALTANNO_H1=0-0-0;LEN_H1=3;
-        GT      1/1
-    chr1    6023939 .       ATTTTTTTTTTTTTTTT       ATTTTTTTTTTTTT,ATTTTTTTTTTTTTT  .       PASS    END=6023955;RU=T,A;SVTYPE=STR;ALTANNO_H1=1-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=14;ALTANNO_H2=1-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=15;      GT      1/2
-    chr1    11509478        .       TGAGAGAGAGAGA       TGAGAGAGAGAG,TGAGAGAGAGAGAGAG  .       PASS    END=11509490;RU=GA,AG;SVTYPE=STR;ALTANNO_H1=1-1-1-1-1-1;LEN_H1=6;ALTANNO_H2=1-1-1-1-1-1-1-1;LEN_H2=8;   GT      1/2
-    """
-
-    fields = row.strip().split("\t")
-    chrom = fields[0]
-    start_pos = int(fields[1])
-    info_field = fields[7]
-
-    # VAMOS alleles are consistently 1 bp shorter than the ref with the last bp missing so I think this resolves it
-    end_pos = int(info_field.split("END=")[1].split(";")[0])
-    end_pos -= 1
-    # Replace the adjusted END position in the INFO field
-    info_field = info_field.replace(f"END={end_pos + 1}", f"END={end_pos}")
-
-    sample_field = fields[9]
-    genotype = sample_field.split(":")[0]
-    alt_alleles = sample_field.split(":")[1:]
-    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos, fasta)
-
-    fields[3] = ref_allele
-    fields[4] = ",".join(alt_alleles)
-    fields[9] = sample_field.split(":")[0]  # Keep only genotype information
-
-    # Check which separator is used
-    if '|' in genotype:
-        sep = '|'
-    else:
-        sep = '/'
-    genotype_list = genotype.split(sep)
-
-    # Check if any of the ALT alleles match the REF allele
-    for i, alt_allele in enumerate(alt_alleles):
-        if alt_allele == ref_allele:
-            # Change this allele in the genotype to REF (0)
-            genotype_list = ['0' if g == str(i + 1) else g for g in genotype_list]
-            # Remove this ALT allele
-            del alt_alleles[i]
-            # Replace corresponding ALTANNO_H1 and LEN_H1 fields in INFO so they refer to the ref allele
-            info_field = info_field.replace(f"ALTANNO_H{i + 1}", f"ALTANNO_H0")
-            info_field = info_field.replace(f"LEN_H{i + 1}", f"LEN_H0")
-
-    # If the remaining genotypes contain skip sequencial alleles (e.g. 0/2), fix them
-    if genotype_list == ['0', '2']:
-        genotype_list = ['0', '1']
-    elif genotype_list == ['2', '2']:
-        genotype_list = ['1', '1']
-    elif genotype_list == ['1', '0'] and sep == '/': # Only swap if unphased
-        genotype_list = ['0', '1']
-
-    # Update the fields
-    if len(alt_alleles) == 0:
-        fields[4] = "."
-    else:
-        fields[4] = ",".join(alt_alleles)
-    fields[7] = info_field
-    fields[9] = sep.join(genotype_list)
-
-    return "\t".join(fields)
-
-def fetch_ref_allele(chrom, start, end, fasta):
-    """
-    Fetch reference sequence for a given region from a FASTA file.
-
-    Args:
-        chrom (str): chromosome name as in VCF (e.g. 'chr1' or '1')
-        start (int): 1-based start position
-        end (int): 1-based end position (inclusive)
-        fasta
-
-    Behavior:
-        Attempts to use pysam.FastaFile if available for fast indexed access. If pysam
-        is not installed, falls back to loading the whole FASTA into memory (simple)
-        and returns the requested slice. The FASTA path must be provided via the
-        --ref CLI argument or the REF_FASTA environment variable.
-    """
-    try:
-        seq = fasta.fetch(chrom, start - 1, end)
-    except Exception as e:
-        seq = 'N'
-        sys.stderr.write(f"Error fetching {chrom}:{start}-{end}: {e}\n")
-
-    return seq.upper()
 
 if __name__ == "__main__":
     main()

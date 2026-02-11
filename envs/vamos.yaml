@@ -1,9 +1,0 @@
-name: vamos-env
-channels: [conda-forge, bioconda, defaults]
-dependencies:
-  - htslib>=1.17
-  - zlib
-  - bzip2
-  - xz
-  - libdeflate
-  - openssl=1.1

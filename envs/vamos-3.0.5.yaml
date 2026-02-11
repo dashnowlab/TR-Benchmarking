@@ -1,0 +1,28 @@
+name: vamos-3.0.5
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # runtime / build base
+  - python=3.10
+  - make
+  - cmake
+  - gxx_linux-64
+  - pysam
+
+  # VAMOS requirements
+  - htslib>=1.17
+  - boost>=1.73.0
+  - abpoa
+
+  # Let htslib choose the compatible libdeflate (avoid libdeflate=1.7 conflict)
+  - libdeflate>=1.22,<1.26
+
+  # common compression libs (often pulled in anyway, but harmless + explicit)
+  - zlib
+  - bzip2
+  - xz
+
+  # recommended: modern TLS stack (avoid old openssl=1.1 pins)
+  - openssl>=3

@@ -18,16 +18,25 @@ module load nextflow
 module load singularity/3.7.4
 module load miniforge/24.11.3-0
 
-# Base directories all tied to out_dir
-BASE="/pl/active/dashnowlab/projects/TR-benchmarking/"
-WORK_DIR="${BASE}/work_elbay"
+# --- parse -w / --work-dir from nextflow args and set NXF_HOME based on it ---
+WORKDIR=""
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    -w|--work-dir)   WORKDIR="${args[$((i+1))]}";;
+    --work-dir=*)    WORKDIR="${args[$i]#--work-dir=}";;
+    -w=*)            WORKDIR="${args[$i]#-w=}";;
+    -w/*)            WORKDIR="${args[$i]#-w}";;
+  esac
+done
 
-# Ensure dirs exist
-#mkdir -p "$WORK_DIR" "$ASSETS_DIR" "$NXFHOME_DIR" "$WORK_DIR/tmp" "$WORK_DIR/cache" "$WORK_DIR/logs"
+echo "${WORKDIR}"
+
+export NXF_HOME="${WORKDIR}/.nextflow"
 
 
 echo "== Starting nextflow =="
-nextflow run "$@" -profile singularity -w "$WORK_DIR"
+nextflow run "$@" -profile singularity
 echo "== Nextflow complete =="
 
 # Example usage: sbatch run_benchmarking_slurm.sh run_benchmarking.nf --list test_bam.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -with-overwrite

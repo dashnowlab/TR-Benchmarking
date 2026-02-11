@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - pyabpoa=1.5.1
+  - pyabpoa=1.5.5
   - medaka=2.1.1
   - h5py
   - numpy

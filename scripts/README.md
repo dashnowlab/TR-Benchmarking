@@ -61,3 +61,20 @@ while IFS=$'\t' read -r CRAM KARYOTYPE; do
 done < test_bam.list
 
 ```
+for f in /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-HG/vamos/*.vamos.vcf; do python3 fix-vcf.py "$f" "${f%.vcf}.fixed.vcf" --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta; done
+
+
+python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/strdust/HG003.30x.haplotagged.strdust.vcf --dad ../benchmark-catalog-v2-HG/strdust/HG004.30x.haplotagged.strdust.vcf --kids ../benchmark-catalog-v2-HG/strdust/HG002.30x.haplotagged.strdust.vcf --out-prefix ../mendelian_consistency_calc/strdust-&
+
+python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/atarva/HG003.30x.haplotagged.atarva.vcf --dad ../benchmark-catalog-v2-HG/atarva/HG004.30x.haplotagged.atarva.vcf --kids ../benchmark-catalog-v2-HG/atarva/HG002.30x.haplotagged.atarva.vcf --out-prefix ../mendelian_consistency_calc/atarva-&
+
+python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/longtr/HG003.30x.haplotagged.longTR.vcf.gz --dad ../benchmark-catalog-v2-HG/longtr/HG004.30x.haplotagged.longTR.vcf.gz --kids ../benchmark-catalog-v2-HG/longtr/HG002.30x.haplotagged.longTR.vcf.gz --out-prefix ../mendelian_consistency_calc/longtr- --merge-key id&
+
+ python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/strkit/HG003.30x.haplotagged.strkit-min_read_1.vcf --dad ../benchmark-catalog-v2-HG/strkit/HG004.30x.haplotagged.strkit-min_read_1.vcf --kids ../benchmark-catalog-v2-HG/strkit/HG002.30x.haplotagged.strkit-min_read_1.vcf --out-prefix ../mendelian_consistency_calc/strkit-&
+
+ python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/vamos/HG003.30x.haplotagged.vamos.fixed.vcf --dad ../benchmark-catalog-v2-HG/vamos/HG004.30x.haplotagged.vamos.fixed.vcf --kids ../benchmark-catalog-v2-HG/vamos/HG002.30x.haplotagged.vamos.fixed.vcf --out-prefix ../mendelian_consistency_calc/vamos-&
+
+ python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/medaka/HG003.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --dad ../benchmark-catalog-v2-HG/medaka/HG004.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --kids /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-HG/medaka/HG002.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --out-prefix ../mendelian_consistency_calc/medaka-&
+
+
+

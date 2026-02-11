@@ -273,6 +273,7 @@ process longTR_per_chrom {
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
 
     """
+    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
     LongTR \\
         --alignment-params ${alignment_params.join(',')} \\
         --fasta ${ref} \\

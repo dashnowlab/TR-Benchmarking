@@ -1,106 +1,189 @@
-import sys
 import gzip
 import io
 
-'''
-'''
+
 class Reader:
-    def __init__(self, file_path, buffer_size = io.DEFAULT_BUFFER_SIZE):
+    def __init__(self, file_path: str, buffer_size = io.DEFAULT_BUFFER_SIZE):
+        """
+        Docstring for __init__
+        
+        :param file_path: Description
+        :type file_path: str
+        :param buffer_size: Description
+        """
         self.file_obj = None
         self.buffer = buffer_size
         self.path = file_path
-        self.end_state = False # whether or not the end of the file has been reached
-        self.cur_line = None
+        self._raw_line = None
+        self.cur_line = None # will be the same as raw_line if no format function is provided to read()
+        self.cur_loc = None
+
+
+    @property
+    def raw_line(self):
+        """
+        Docstring for raw_line
+        
+        
+        """
+        return self._raw_line
 
 
     def close_file(self):
-        if not self.file_obj.closed:
+        """
+        Docstring for close_file
+        
+        
+        """
+        if not self.file_obj: # if file was opened
             self.file_obj.close()
+
+        self.cur_loc = None
 
 
     def open_file(self):
+        """
+        Docstring for open_file
+        
+        
+        """
         try:
             if self.path.endswith(".gz"):
                 self.file_obj = gzip.open(self.path, "rt", encoding="utf-8")
             else:
                 self.file_obj = open(self.path, "r", encoding="utf-8", buffering=self.buffer)
- 
-            self.read() # move to the first line in the file
+
+            self.cur_loc = 0
             return self
         except (IOError, OSError) as e: 
             raise FileIOError(f"File Opening Error: {e}")
-        
 
-    '''
-    Returns True if the Line was read, and False otherwise
-    '''
+
     def read(self, format = None):
-        # try to move to the next file as long is it is not already at the end or paused 
-        if not self.end_state:
-            try:
-                line_string = self.file_obj.readline() # readline allows the ability to save positions in the file, as opposed to read()
-            
-                # if the line is not empty (ie. the end of the file has not been reached) 
-                if line_string:
-                    self.prev_line = self.cur_line
-                    if format is not None:
-                        # then format and set the current line
-                        self.cur_line = format(line_string)
-                    else:
-                        self.cur_line = line_string
-                else: 
-                    self.end_state = True
-                    self.prev_line = self.cur_line
-                    self.cur_line = None
-                    self.close_file()
+        """
+        Docstring for read
+              
+        :param format: Description
+        """
+        try:
+            self._raw_line = self.file_obj.readline()
+            self.cur_loc = self.file_obj.tell()
 
-                return True
-            
-            
-            except gzip.BadGzipFile:
-                raise FileReadError(f"Failed to read from {self.path}\nInvalid .gz")
-            except UnicodeError:
-                raise FileReadError(f"Failed to read from {self.path}\nContains Invalid UTF-8 Characters")
+            # if the line is not empty (ie. the end of the file has not been reached) 
+            if self._raw_line:
+                self.prev_line = self.cur_line
+                if format is not None:
+                    # then format and set the current line
+                    self.cur_line = format(self._raw_line)
+                else:
+                    self.cur_line = self._raw_line
+            else: 
+                self.prev_line = self.cur_line
+                self.cur_line = self._raw_line
+
+            return self.cur_line
+                    
+        except gzip.BadGzipFile:
+            raise FileReadError(f"Failed to read from {self.path}\nInvalid .gz")
+        except UnicodeError:
+            raise FileReadError(f"Failed to read from {self.path}\nContains Invalid UTF-8 Characters")
+        except Exception as e:
+            raise FileReadError(f"Failed to read from {self.path}\n Unknown Error {e}")
 
 
+    def skipMetaData(self, delimiter='#', end_delimiter = None): 
+        """
+        Docstring for skipMetaData
         
-        return False
-        #raise FileReadError(f"Failed to read from {self.path}\nFile has reached end state.")
+        
+        """
 
+        if self._raw_line is None:
+            self.read()
+
+        # loop while the current line contains meta data
+        while self._raw_line and self._raw_line.startswith(delimiter):
+            if end_delimiter and self._raw_line.startswith(end_delimiter):
+                break
+            else:
+                self.read()  
+
+        # save the file position of the end of the header/metadata
+        self.header_end = self.file_obj.tell()
+
+
+    def _setFilePosition(self, file_pos: int):
+        self.file_obj.seek(file_pos)
+
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        line = self.read(self.formatLine())
+
+        if not line:
+            return StopIteration
+
+        return line
 
     def __enter__(self):
         return self.open_file()
-
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close_file()
 
 
 
-'''
-'''
 class VCFReader(Reader):
-    def __init__(self, file_path, start_offset = 0, end_offset = 0):
+    _DEFAULT = object()
+
+    def __init__(self, file_path: str):
+        """
+        Docstring for __init__
+        
+        
+        :param file_path: Description
+        :type file_path: str
+        """
         super().__init__(file_path)
-        self.start_off = start_offset
-        self.end_off = end_offset
         self.prev_line = None
         self.header_end = None
 
-        self.pos_info = None
+        self.chrom = None
+        self.pos = None
+        self.end_pos = None
+        self.id = None
         self.ref = None
         self.alt = None
+        self.qual = None
+        self.filter = None
+        self.info = None
+        self.format = None
+        self.sample = None
+        self.genotype = None
         
 
-
-    '''
-    
-    '''
-    def buildGt(self, sample_col=9):
+    def buildGt(self, sample_col=9, ref=None, alt = None):
+        """
+        Docstring for buildGt
+        
+        
+        :param sample_col: Description
+        :param ref: Description
+        :param alt: Description
+        """
         try:
+            # use class parameters unless otherwise specified
+            ref = self.ref if not ref else ref
+            alt = self.alt if not alt else alt
+            
+            # split line into list for easy data grabbing
+            ls = self._raw_line.strip().split("\t")
+
             # grab genotype indices from current line
-            sample_str = self.cur_line[sample_col]
-            idx_str = sample_str.split(':')[0] # splits sample column by ':' and grabs genotype index from start
+            sample_str = ls[sample_col]
+            idx_str = sample_str.split(':')[0] # splits sample column and grabs genotype index from start
             choices = [self.ref, *self.alt, None] # list of possible choices to use for constructing genotype
             gt = []
 
@@ -120,63 +203,45 @@ class VCFReader(Reader):
 
         except Exception as e:
             raise VCFFormatError(f"Failed to construct Genotype due to unknown error: {e}\nFrom sample: {sample_str}")
- 
-
-    '''
-    
-    '''
-    def skipMetaData(self): 
-        # loop while the current line contains meta data
-        while self.cur_line[0].startswith("#") and not self.end_state:
-            if self.cur_line[0].upper().startswith("#CHR"):
-                break
-            else:
-                self.read()  
-
-        # save the file position of the end of the header/metadata
-        self.header_end = self.file_obj.tell()
 
 
-    def read(self, format_method = None):
-        return super().read(format_method or self.formatLine)
-
-
-    '''
-    
-    '''
-    def _checkIdx(self, idx):
-        if idx == '.':
-            return -1 # will set the allele to None
-        else:
-            return int(idx)
-
-
-    '''
-    
-    '''
-    def formatLine(self, ls):
+    def formatLine(self, ls: str):
+        """
+        Docstring for formatLine
+        
+        
+        :param ls: Description
+        :type ls: str
+        """
         # split line string into list of strings
         line_list = ls.strip().split("\t")
 
         # if the file is not reading the header/metadata
         if not line_list[0].startswith("#"):  
             try:       
+                pos = int(line_list[1])
+                ref_len = len(line_list[3])                
+                info_col = line_list[7].split(';') # grab the INFO column
+                end_str = ""
+                for i, str in enumerate(info_col): # seach for end position marker      
+                    if "END=" in str:
+                        end_str = info_col[i].removeprefix("END=")
 
-                pos = int(line_list[1]) 
-                ref_len = len(line_list[3])
-                end_pos = pos + ref_len - 1
-
-                ref = line_list[3][self.start_off:ref_len + self.end_off] # the refence sequence as a string, adjusted by the offsets
-                alt_raw = line_list[4].split(",") # returns a list of all alt alleles
-                alt = [alt[self.start_off:len(alt) + self.end_off] for alt in alt_raw]
-
+                if end_str.isdigit():
+                    end_pos = int(end_str)
+                else:
+                    end_pos = pos + ref_len - 1
+                
                 # set specific data to their own parameters for better accessibility
-                self.pos_info = {                       
-                    "chrom": line_list[0],               
-                    "start": pos + self.start_off,      
-                    "end": end_pos + self.end_off}      
-                self.ref = ref       
-                self.alt = alt
+                self.chrom = line_list[0]             
+                self.pos = pos 
+                self.end_pos = end_pos
+                self.id = line_list[2]
+                self.ref = line_list[3] 
+                self.alt = line_list[4].split(",") # returns a list of all alt alleles
+                self.qual = line_list[5] 
+                self.filter = line_list[6] 
+                self.info = line_list[7]
                     
             except ValueError:
                 raise VCFFormatError(f"Failed to set position '{line_list[4]}' from line: {line_list}\n")
@@ -188,37 +253,63 @@ class VCFReader(Reader):
                 raise VCFFormatError(f"Unexpected error setting parameters from line: {line_list}\n{e}")
 
         return line_list
-        
-    '''
     
-    '''
-    def _setFilePosition(self, file_pos):
-        self.file_obj.seek(file_pos)
+
+    def read(self, format_method = None):
+        if format_method is self._DEFAULT:
+            target_format = self.formatLine
+        else:
+            target_format = format_method
+            
+        return super().read(target_format)
+        
+
+    def _checkIdx(self, idx):
+        """
+        Docstring for _checkIdx
+        
+        
+        :param idx: Description
+        """
+        if idx == '.':
+            return -1 # will set the allele to None
+        else:
+            return int(idx)
 
              
 
 
 class BEDReader(Reader):
-    def __init__(self, file_path):
+    _DEFAULT = object()
+
+    def __init__(self, file_path: str):
+        """
+        Docstring for __init__
+        
+        
+        :param file_path: Description
+        :type file_path: str
+        """
         super().__init__(file_path)
         self.prev_line = None
 
    
-    def formatLine(self, ls):
+    def formatLine(self, ls: str):
+        """
+        Docstring for formatLine
+        
+        
+        :param ls: Description
+        :type ls: str
+        """
         # split line string into list
         line_list = ls.strip().split("\t")
 
         try:
-            # calculate the end position and add it to the end of the row list
-            pos = int(line_list[1])
-            end_pos = int(line_list[2])
-            line_list.append(end_pos)
-
-            # set position information parameter for easier access
-            self.pos_info = {          # eg:
-                    "chrom": line_list[0],   # CHROM1 
-                    "start": pos,            # 10002
-                    "end": end_pos}          # 10222
+            # set position information parameters for easier access
+            self.chrom = line_list[0]             
+            self.pos =  int(line_list[1]) 
+            self.end_pos = int(line_list[2])
             self.ref = line_list[3]
 
         except ValueError:
@@ -231,8 +322,20 @@ class BEDReader(Reader):
 
         return line_list
     
-    def read(self, format_method = None):
-        return super().read(format_method or self.formatLine)
+
+    def read(self, format_method = _DEFAULT):
+        """
+        Docstring for read
+              
+        :param format_method: Description
+        """
+        if format_method is self._DEFAULT:
+            target_format = self.formatLine
+        else:
+            target_format = format_method
+            
+        return super().read(target_format)
+    
 
 
 

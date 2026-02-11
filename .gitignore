@@ -14,4 +14,4 @@
 !/nextflow.config
 !/scripts/
 !/scripts/**
-/scripts/VCF_comparisons/__pycache__
+**/__pycache__/

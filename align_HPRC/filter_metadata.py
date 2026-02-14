@@ -8,16 +8,22 @@ def main(argv=None):
     parser.add_argument('--infile', '-i', required=True, help='Input metadata CSV file')
     parser.add_argument('--outfile', '-o', required=True, help='Output filtered metadata CSV file')
     parser.add_argument('--countfile', '-c', required=True, help='Output file to write count of filtered samples')
+    parser.add_argument('--num_samples', type=int, default=None, help='Optional maximum number of samples to keep (default: no limit)')
+    parser.add_argument('--chemistry', type=str, default=None, help='Optional sequencing chemistry to filter by (e.g. "R9" or "R10", default: no chemistry filter)')
     parser.add_argument('--min_cov', type=float, default=10.0, help='Minimum coverage threshold (default: 10.0)')
     parser.add_argument('--max_cov', type=float, default=1000.0, help='Maximum coverage threshold (default: 1000.0)')
-    parser.add_argument('--keep_cols', nargs='*', default=['sample_ID', 'coverage', 'path'], 
+    parser.add_argument('--keep_cols', nargs='*', default=['sample_ID', 'coverage', 'path', 'sequencing_chemistry'],
                         help='List of columns to keep. First three must be sample_ID, coverage, file path, or equivalent.')
 
     args = parser.parse_args(argv)
+    # sequencing_chemistry column check if values starts with R9 or R10 and ignore additional values after that
 
-    filter_metadata(infile=args.infile, outfile=args.outfile, countfile=args.countfile, min_cov=args.min_cov, max_cov=args.max_cov, keep_cols=args.keep_cols)
+    filter_metadata(infile=args.infile, outfile=args.outfile, countfile=args.countfile, min_cov=args.min_cov, max_cov=args.max_cov,
+                    chemistry=args.chemistry, keep_cols=args.keep_cols, num_samples=args.num_samples)
 
-def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', countfile='filtered_count.txt', min_cov=10.0, max_cov=1000.0, keep_cols=None):
+
+def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', countfile='filtered_count.txt', min_cov=10.0, max_cov=1000.0,
+                    chemistry=None, keep_cols=None, num_samples=None):
     """Filter metadata CSV based on coverage.
 
     Keeps the highest-coverage row per sample where coverage >= min_cov.
@@ -50,6 +56,7 @@ def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', coun
     idx_id = idx_map[id_col]
     idx_path = idx_map[path_col]
     idx_cov = idx_map[cov_col] if cov_col in header else -1
+    idx_chemistry = header.index('sequencing_chemistry') if 'sequencing_chemistry' in header else -1
 
     rows = []
     for row in reader[1:]:
@@ -72,6 +79,11 @@ def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', coun
             continue
         if cov is None or cov < float(min_cov) or cov > float(max_cov):
             continue
+        # Filter by chemistry if specified
+        if chemistry is not None and idx_chemistry != -1:
+            chem = (row[idx_chemistry].strip() if idx_chemistry < len(row) else '').strip()
+            if not chem.startswith(chemistry):
+                continue
         # store the full original row so we can output requested columns
         rows.append((sid, cov, path, row))
 
@@ -85,7 +97,10 @@ def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', coun
     with open(outfile, 'w', newline='') as outf:
         writer = csv.writer(outf)
         writer.writerow(newheader)
-        for sid, (cov, row) in best.items():
+        best_items = list(best.items())
+        if num_samples is not None:
+            best_items = best_items[:num_samples]
+        for sid, (cov, row) in best_items:
             cov_out = int(cov) if float(cov).is_integer() else cov
             out_vals = []
             for col in newheader:
@@ -109,7 +124,7 @@ def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', coun
             writer.writerow(out_vals)
 
     with open(countfile, 'w') as cf:
-        cf.write(str(len(best)) + "\n")
+        cf.write(str(len(best_items)) + "\n")
 
 import re
 

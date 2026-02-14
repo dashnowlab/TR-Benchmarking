@@ -161,7 +161,7 @@ process filter_meta {
     script:
     """
     module load python
-    python /home/hdashnow@xsede.org/myprojects/git/nf-long-tr/filter_metadata.py \
+    python /home/hdashnow@xsede.org/myprojects/git/TR-Benchmarking/align_HPRC/filter_metadata.py \
         --infile ${metadata_file} --outfile filtered_metadata.csv --countfile filtered_count.txt \
         --min_cov 25 --max_cov 30 --chemistry R10 --num_samples 25
     """

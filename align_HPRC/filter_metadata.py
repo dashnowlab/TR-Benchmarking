@@ -32,6 +32,51 @@ def filter_metadata(infile='metadata.csv', outfile='filtered_metadata.csv', coun
     best sample; otherwise rows without coverage are skipped.
     """
     skip_samples = ["HG002", "HG005"]
+    # Previously downloaded
+    skip_samples += [
+        "HG00329",
+        "HG00408",
+        "HG00597",
+        "HG00609",
+        "HG00639",
+        "HG01081",
+        "HG01255",
+        "HG01346",
+        "HG01433",
+        "HG01496",
+        "HG01786",
+        "HG01975",
+        "HG01993",
+        "HG02004",
+        "HG02040",
+        "HG02071",
+        "HG02132",
+        "HG02135",
+        "HG02280",
+        "HG02293",
+        "HG02572",
+        "HG02602",
+        "HG02630",
+        "HG02698",
+        "HG02723",
+        "HG02922",
+        "HG02984",
+        "HG03017",
+        "HG03209",
+        "HG03453",
+        "HG03521",
+        "HG03710",
+        "HG03804",
+        "HG03816",
+        "HG04157",
+        "HG04228",
+        "NA18505",
+        "NA19682",
+        "NA19776",
+        "NA19835",
+        "NA20346",
+        "NA21110"
+    ]
 
     newheader = list(keep_cols) + ['readgroup']
     if len(newheader) < 3:

@@ -38,7 +38,7 @@ workflow {
     ref = file(params.ref, checkIfExists: true)
     fai = file("${params.ref}.fai", checkIfExists: true)
 
-    // fetch metadata and produce tuples (sample_ID, coverage, path, readgroup)
+    // fetch metadata and produce tuples (sample_ID, coverage, path, readgroup), current cols:sample_ID,coverage,path,sequencing_chemistry,readgroup
     fetch_meta()
 
     // Filter metadata inside a process so `filtered_metadata.csv` is produced and published.
@@ -50,15 +50,26 @@ workflow {
         .map { t -> t[0] }
         .flatMap { metaFile ->
             def tuples = []
+            def headerMap = [:]
             metaFile.eachLine { line, lineNum ->
-                if (lineNum == 1) return // skip header
-                // split into at most 3 parts: sample_id, coverage, path, readgroup
-                def parts = line.split(',', 4)
-                if (parts.size() >= 4) {
-                    def sample_id = parts[0].trim()
-                    def coverage = parts[1].trim()
-                    def url = parts[2].trim()
-                    def readgroup = parts[3].trim()
+                if (lineNum == 1) {
+                    // Parse header to map column names to indices
+                    def headers = line.split(',')
+                    headers.eachWithIndex { header, idx ->
+                        headerMap[header.trim()] = idx
+                    }
+                    return
+                }
+                // Parse data rows using column headings
+                def parts = line.split(',')
+                if (headerMap['sample_ID'] != null && headerMap['coverage'] != null && 
+                    headerMap['path'] != null && headerMap['readgroup'] != null &&
+                    parts.size() > [headerMap['sample_ID'], headerMap['coverage'], 
+                                    headerMap['path'], headerMap['readgroup']].max()) {
+                    def sample_id = parts[headerMap['sample_ID']].trim()
+                    def coverage = parts[headerMap['coverage']].trim()
+                    def url = parts[headerMap['path']].trim()
+                    def readgroup = parts[headerMap['readgroup']].trim()
                     // only emit when we have both id and url
                     if (sample_id && url) tuples << tuple(sample_id, coverage, url, readgroup)
                 }
@@ -163,7 +174,7 @@ process filter_meta {
     module load python
     python /home/hdashnow@xsede.org/myprojects/git/TR-Benchmarking/align_HPRC/filter_metadata.py \
         --infile ${metadata_file} --outfile filtered_metadata.csv --countfile filtered_count.txt \
-        --min_cov 25 --max_cov 30 --chemistry R10 --num_samples 25
+        --min_cov 25 --max_cov 1000 --chemistry R10 --num_samples 25
     """
 
 }

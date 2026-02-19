@@ -1,31 +1,41 @@
 import argparse
-import sys
 import glob
 import gzip
 
+"""
+Example usage:
+python extract_pathogenic.py 
+    --vcfs /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf \
+        /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf.gz \ 
+    --bed /path/to/STRchive-disease-loci-v2.15.0.hg38.general.bed \
+    --metadata /path/to/metadata_pathogenic_sciadv.abm5386.tsv \
+    --output pathogenic_results.min_reads.tsv 
+"""
+
 def main():
     parser = argparse.ArgumentParser(description="Extract pathogenic loci from VCF files.")
-    parser.add_argument("vcf", nargs='+', help="Path to the input VCF file(s).")
-    parser.add_argument("bed", help="Path to the input BED file of pathogenic loci with locus ID in the 4th column.")
-    parser.add_argument("--metadata", help="Path to the output metadata file (optional).")
+    parser.add_argument("--vcfs", nargs='+', help="Path to the input VCF file(s).")
+    parser.add_argument("--bed", help="Path to the input BED file of pathogenic loci with locus ID in the 4th column.")
+    parser.add_argument("--metadata", help="Path to the input metadata file.")
+    parser.add_argument("--output", help="Path to the output TSV file (default: pathogenic_results.tsv)", default="pathogenic_results.tsv")
     args = parser.parse_args()
 
-    #args.vcf = ["NA13515.atarva.vcf"] # for testing
+    #args.vcfs = ["NA13515.atarva.vcf"] # for testing
     # all vcfs in the directory /Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/atarva
-    # args.vcf = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/atarva/*.vcf")
+    # args.vcfs = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/atarva/*.vcf")
     # Files ending in .vcf or .vcf.gz
-    #args.vcf = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf")
-    args.vcf = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf.gz")
+    #args.vcfs = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf")
+    # args.vcfs = glob.glob("/Users/dashnowh/alpine/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/*/*.vcf.gz")
 
-    args.bed = "STRchive-disease-loci-v2.15.0.hg38.general.bed" # for testing
-    args.metadata = "metadata_pathogenic_sciadv.abm5386.tsv" # for testing
+    # args.bed = "STRchive-disease-loci-v2.15.0.hg38.general.bed" # for testing
+    # args.metadata = "metadata_pathogenic_sciadv.abm5386.tsv" # for testing
 
     pathogenic_loci = parse_bed_file(args.bed)
     metadata = parse_metadata_file(args.metadata) if args.metadata else None
 
-    with open("pathogenic_results.tsv", "w") as out:
+    with open(args.output, "w") as out:
         out.write("\t".join(["tool", "sample", "gene", "molec_type", "molec_prec_allele1", "molec_prec_allele2", "molec_allele1_len", "molec_allele2_len", "allele1_len", "allele2_len", "allele1_seq", "allele2_seq"]) + "\n")
-        for vcf in args.vcf:
+        for vcf in args.vcfs:
             # Get sample ID from the start of the filename and tool from the directory name
             sample_id = vcf.split("/")[-1].split(".")[0]  # Assuming sample ID is the first part of the filename
             tool = vcf.split("/")[-2]  # Assuming tool is the parent directory name
@@ -177,7 +187,7 @@ def filter_vcf_by_bed(vcf_path, pathogenic_loci):
             fields = line.strip().split("\t")
             chrom = fields[0]
             pos = int(fields[1])
-            print(chrom, pos)
+            #print(chrom, pos)
 
             # Check if ref and alt alleles are present and not symbolic
             if fields[3] == "N" or fields[4] == "<VNTR>":

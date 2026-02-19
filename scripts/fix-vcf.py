@@ -45,11 +45,12 @@ def fix_row(row: str, fasta: pysam.FastaFile) -> str:
         return row.rstrip("\n")  # not a standard VCF data line; leave unchanged
 
     chrom = fields[0]
-    start_pos = int(fields[1]) + 1  # Convert from 0-based to 1-based
+    start_pos = int(fields[1])  # Convert from 0-based to 1-based
     info_field = fields[7]
 
     # VAMOS alleles are consistently 1 bp shorter than the ref with the last bp missing so I think this resolves it
     end_pos = int(info_field.split("END=")[1].split(";")[0])
+    # This adjustment no longer needed as of vamos v3.0.6, which outputs correct END positions
     #end_pos -= 1
     # Replace the adjusted END position in the INFO field
     #info_field = info_field.replace(f"END={end_pos + 1}", f"END={end_pos}")
@@ -61,10 +62,9 @@ def fix_row(row: str, fasta: pysam.FastaFile) -> str:
         alt_alleles = alt_alleles.split(",")
     else:
         alt_alleles = [alt_alleles]
-    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos, fasta)
 
     # Fetch reference allele (inclusive end; pysam fetch is 0-based start, end-exclusive)
-    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos_adj, fasta)
+    ref_allele = fetch_ref_allele(chrom, start_pos + 1, end_pos, fasta)
 
     # Set REF and ALT from sequences
     fields[3] = ref_allele

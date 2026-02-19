@@ -31,6 +31,13 @@ def fix_row(row: str, fasta: pysam.FastaFile) -> str:
     Sample field assumed to be like:
       GT:ALLELE1:ALLELE2...
     where ALLELE1/2 are the actual sequences to use as ALT alleles.
+    Sample input data
+    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
+    chr1	2795086	.	N	<VNTR>	.	PASS	END=2795101;RU=A;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=15;ALTANNO_H2=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=16;	GT:RS	1/2:AAAAAAAAAAAAAAA,AAAAAAAAAAAAAAAA
+
+    Sample output data
+    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
+    chr1	2795086	.	AAAAAAAAAAAAAAA	AAAAAAAAAAAAAAAA	.	PASS	END=2795101;RU=A;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=15;ALTANNO_H2=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=16;	GT:RS	0/1
     """
 
     fields = row.rstrip("\n").split("\t")
@@ -38,28 +45,23 @@ def fix_row(row: str, fasta: pysam.FastaFile) -> str:
         return row.rstrip("\n")  # not a standard VCF data line; leave unchanged
 
     chrom = fields[0]
-    start_pos = int(fields[1])  # 1-based POS
+    start_pos = int(fields[1]) + 1  # Convert from 0-based to 1-based
     info_field = fields[7]
 
-    # Parse END from INFO (required for your logic)
-    # Adjust END by -1 (your VAMOS-specific fix)
-    # and update INFO END accordingly
-    try:
-        end_str = info_field.split("END=")[1].split(";")[0]
-        end_pos = int(end_str)
-    except Exception:
-        # If END isn't present/parsable, we cannot fetch reference properly; leave unchanged
-        return row.rstrip("\n")
-
-    # Apply your correction: END -= 1
-    end_pos_adj = end_pos - 1
-    # Replace only the first END occurrence safely
-    info_field = info_field.replace(f"END={end_pos}", f"END={end_pos_adj}", 1)
+    # VAMOS alleles are consistently 1 bp shorter than the ref with the last bp missing so I think this resolves it
+    end_pos = int(info_field.split("END=")[1].split(";")[0])
+    #end_pos -= 1
+    # Replace the adjusted END position in the INFO field
+    #info_field = info_field.replace(f"END={end_pos + 1}", f"END={end_pos}")
 
     sample_field = fields[9]
-    parts = sample_field.split(":")
-    genotype = parts[0]
-    alt_alleles = parts[1:]  # sequences from sample columns (may be empty)
+    genotype = sample_field.split(":")[0]
+    alt_alleles = sample_field.split(":")[1]
+    if "," in alt_alleles:
+        alt_alleles = alt_alleles.split(",")
+    else:
+        alt_alleles = [alt_alleles]
+    ref_allele = fetch_ref_allele(chrom, start_pos, end_pos, fasta)
 
     # Fetch reference allele (inclusive end; pysam fetch is 0-based start, end-exclusive)
     ref_allele = fetch_ref_allele(chrom, start_pos, end_pos_adj, fasta)

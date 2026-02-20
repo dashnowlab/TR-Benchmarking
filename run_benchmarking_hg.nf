@@ -104,7 +104,6 @@ workflow {
     mosdepth(aligned_samples, ref)
     atarva(aligned_samples, ref, fai)
     longTR(aligned_samples, ref, fai)
-
     medaka(aligned_samples, ref, fai)
     straglr(aligned_samples, ref, fai)
     strdust(aligned_samples, ref, fai)
@@ -178,7 +177,7 @@ process atarva {
     def atarva_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.atarva.bed.gz'
 
     """
-    /projects/ealiyev@xsede.org/software/anaconda/envs/atarva-0.5.0/bin/atarva -t $task.cpus -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram -log --karyotype ${karyotype} -o ${sample}.atarva.vcf
+    /projects/ealiyev@xsede.org/software/anaconda/envs/atarva-0.5.0/bin/atarva -t $task.cpus -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram --karyotype ${karyotype} -o ${sample}.atarva.vcf
     """
 }
 
@@ -202,6 +201,7 @@ process longTR {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
     MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
@@ -211,8 +211,36 @@ process longTR {
         --fasta ${ref} \
         --max-tr-len \$MAX_TR_LEN \
         --regions ${tr_regions} \
+        ${haploid_args} \
         --bams ${aln} \
         --tr-vcf ${sample}.longTR.vcf.gz
+    """
+}
+
+process medaka {
+    conda 'envs/medaka-2.1.1.yaml'
+
+    cpus { 1 * task.attempt }
+    memory { 32.GB * task.attempt }
+    time { 24.h * task.attempt  }
+
+    publishDir variantDir + '/medaka', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.medaka.vcf"
+
+    script:
+    def medaka_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.medaka.bed'
+    def ref    = '/pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta'
+    def sex      = (karyotype == 'XX') ? 'female' : (karyotype == 'XY') ? 'male' : 'unknown'
+
+    """
+    medaka tandem ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf --workers $task.cpus --sample_name ${sample} --debug
     """
 }
 
@@ -288,7 +316,7 @@ process straglr {
 
     cpus { 1 * task.attempt }
     memory { 32.GB * task.attempt }
-    time { 24.h * task.attempt }
+    time { 48.h * task.attempt }
 
     publishDir variantDir + '/straglr', mode: 'copy'
 
@@ -302,9 +330,10 @@ process straglr {
 
     script:
     def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.strglr.bed'
+    def sex      = (karyotype == 'XX') ? 'f' : (karyotype == 'XY') ? 'm' : 'f'
 
     """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --genotype_in_size --nprocs $task.cpus
+    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --sex ${sex} --genotype_in_size --nprocs $task.cpus
     """
 }
 
@@ -329,7 +358,7 @@ process strkit {
     def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.strkit.bed'
 
     """
-    strkit call ${aln} --ploidy ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf --processes $task.cpus
+    strkit call ${aln} --ploidy ${karyotype} --realign --sex-chr ${karyotype} --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf --processes $task.cpus
     """
 }
 
@@ -390,32 +419,5 @@ process vamos {
     export LD_LIBRARY_PATH=\${CONDA_PREFIX}/lib:\$LD_LIBRARY_PATH
     /pl/active/dashnowlab/software/vamos-3.0.5/vamos/src/vamos --read -b ${aln} -r ${vamos_tr_regions} -s ${sample} -o ${sample}.vamos.vcf -S -Z -t $task.cpus
     python3 ${fix_vcf} ${sample}.vamos.vcf ${sample}.vamos.fixed.vcf --ref ${ref}
-    """
-}
-
-process medaka {
-    conda 'envs/medaka-2.1.1.yaml'
-
-    cpus { 1 * task.attempt }
-    memory { 32.GB * task.attempt }
-    time { 24.h * task.attempt  }
-
-    publishDir variantDir + '/medaka', mode: 'copy'
-
-    input:
-    tuple val(sample), path(aln), path(idx), val(karyotype)
-    path ref
-    path fai
-
-    output:
-    path "${sample}.medaka.vcf"
-
-    script:
-    def medaka_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.medaka.bed'
-    def ref    = '/pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta'
-    def sex      = (karyotype == 'XX') ? 'female' : (karyotype == 'XY') ? 'male' : 'unknown'
-
-    """
-    medaka tandem ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf --workers $task.cpus --sample_name ${sample} --debug
     """
 }

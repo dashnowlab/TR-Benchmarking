@@ -33,6 +33,7 @@ done
 echo "${WORKDIR}"
 
 export NXF_HOME="${WORKDIR}/.nextflow"
+export NXF_CACHE_DIR="${WORKDIR}/.nextflow"
 
 
 echo "== Starting nextflow =="

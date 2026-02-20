@@ -76,5 +76,7 @@ python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v
 
  python3 mendelian_consistency_calc_ref_alt_debug.py --mom ../benchmark-catalog-v2-HG/medaka/HG003.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --dad ../benchmark-catalog-v2-HG/medaka/HG004.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --kids /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-HG/medaka/HG002.30x.haplotagged.medaka.vcf/medaka_to_ref.TR.vcf --out-prefix ../mendelian_consistency_calc/medaka-&
 
+ python3 mendelian_consistency_calc_ref_alt_straglr.py --mom ../benchmark-catalog-v2-HG/straglr/HG003.30x.haplotagged.vcf --dad ../benchmark-catalog-v2-HG/straglr/HG004.30x.haplotagged.vcf --kids ../benchmark-catalog-v2-HG/straglr/HG002.30x.haplotagged.vcf --out-prefix ../mendelian_consistency_calc/vamos-&
+
 
 

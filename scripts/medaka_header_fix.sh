@@ -66,36 +66,36 @@ module purge
 module load samtools/1.16.1
 samtools --version
 
-# echo "IN_CRAM=$IN_CRAM"
-# echo "REF_FASTA=$REF_FASTA"
-# echo "OUT_DIR=$OUT_DIR"
-# echo "OUT_CRAM=$OUT_CRAM"
-# echo "HOST=$(hostname)"
-# echo "START=$(date -Is)"
+echo "IN_CRAM=$IN_CRAM"
+echo "REF_FASTA=$REF_FASTA"
+echo "OUT_DIR=$OUT_DIR"
+echo "OUT_CRAM=$OUT_CRAM"
+echo "HOST=$(hostname)"
+echo "START=$(date -Is)"
 
 # # temp header (INSIDE OUT_DIR; unique per job)
-# umask 007
-# tmpdir="$(mktemp -d -p "$OUT_DIR" "${SLURM_JOB_ID:-manual}.tmp.URfix.XXXXXXXX")"
-# trap 'rm -rf "$tmpdir"' EXIT
+umask 007
+tmpdir="$(mktemp -d -p "$OUT_DIR" "${SLURM_JOB_ID:-manual}.tmp.URfix.XXXXXXXX")"
+trap 'rm -rf "$tmpdir"' EXIT
 
-# hdr="$tmpdir/header.sam"
-# hdr_fixed="$tmpdir/header.fixed.sam"
+hdr="$tmpdir/header.sam"
+hdr_fixed="$tmpdir/header.fixed.sam"
 
 # # Extract header
-# samtools view -H "$IN_CRAM" > "$hdr"
+samtools view -H "$IN_CRAM" > "$hdr"
 
-# awk -v ref="$REF_FASTA" 'BEGIN{OFS="\t"}
-#   /^@/{
-#     for(i=1;i<=NF;i++){
-#       if($i ~ /^UR:/){ $i="UR:" ref }
-#     }
-#   }
-#   {print}
-# ' "$hdr" > "$hdr_fixed"
+awk -v ref="$REF_FASTA" 'BEGIN{OFS="\t"}
+  /^@/{
+    for(i=1;i<=NF;i++){
+      if($i ~ /^UR:/){ $i="UR:" ref }
+    }
+  }
+  {print}
+' "$hdr" > "$hdr_fixed"
 
 # # Reheader -> new CRAM (use reference for CRAM writing)
-# samtools reheader "$hdr_fixed" "$IN_CRAM" \
-#   | samtools view -C -T "$REF_FASTA" -o "$OUT_CRAM" -
+samtools reheader "$hdr_fixed" "$IN_CRAM" \
+  | samtools view -C -T "$REF_FASTA" -o "$OUT_CRAM" -;
 
 samtools index "$OUT_CRAM"
 

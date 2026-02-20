@@ -270,5 +270,3 @@ python3 mendelian_consistency_calc_ref_alt_straglr.py \
 ```
 
 ---
-
-# End of README

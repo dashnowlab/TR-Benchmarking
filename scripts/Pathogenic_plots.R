@@ -4,71 +4,81 @@ library(cowplot)
 library(purrr)
 theme_set(theme_cowplot()) # Sets the default for subsequent plots
 
-#colors <- c("#7FB3D5", "#F5A623", "#7DCEA0", "#F1948A", "#B39DDB", "#F7DC6F", "#B3911F")
-#tableau10 
-colors <- c("#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948","#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC")
-tools <- c("medaka", "atarva", "longtr", "strkit", "vamos", "straglr", "strdust")
-tool_labels <- setNames(c("Medaka Tandem", "ATaRVa", "LongTR", "STRkit", "vamos", "Straglr", "STRdust"), tools)
-tools <- sort(tools)
-tool_colors <- setNames(colors, tools)
+# Set consistent tool colors
+tableau_colors <- c("#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#FF9DA7")
+tools <- c("longtr", "atarva", "medaka", "strkit", "vamos", "strdust", "straglr")
+labels <- c("LongTR", "ATaRVa", "Medaka\nTandem", "STRkit", "vamos", "STRdust", "Straglr")
 
-#data <- read_tsv("pathogenic_results.default_settings.tsv")
-data <- read_tsv("pathogenic_results.tsv")
+tool_levels <- tools
+tool_labels <- setNames(labels, tools)
+tool_cols <- setNames(tableau_colors, tools) # <-- map colors by tool KEYS
 
-# Offset PABPN1 molecular size +4 to match STRchive coordinates
-data[data$gene == 'PABPN1','molec_allele1_len'] = 4*3 + data[data$gene == 'PABPN1','molec_allele1_len']
-data[data$gene == 'PABPN1','molec_allele2_len'] = 4*3 + data[data$gene == 'PABPN1','molec_allele2_len']
+# analysis = 'minreads'
+data <- read_tsv("pathogenic_results.min_reads.tsv")
 
-data$tool_allele_max = pmax(data$allele1_len, data$allele2_len, na.rm = T)
-data$molec_allele_max = pmax(data$molec_allele1_len, data$molec_allele2_len, na.rm = T)
-data$allele_max_diff = data$tool_allele_max - data$molec_allele_max
-data$gene_sample = factor(interaction(data$gene, data$sample, sep = " | ", drop = TRUE))
-data$molec_type[data$molec_type == "Unknown"] = NA
+# # analysis = 'default'
+default.data <- read_tsv("pathogenic_results.default.tsv")
+# straglr.default = subset(default.data, tool == 'straglr')
+# 
+# # Replace minreads straglr with default straglr
+# data = subset(data, tool != 'straglr')
+# data = rbind(data, straglr.default)
 
-# data.long <- data %>%
-#   rowwise() %>%
-#   mutate(
-#     molec_min = min(molec_allele1_len, molec_allele2_len, na.rm = TRUE),
-#     molec_max = max(molec_allele1_len, molec_allele2_len, na.rm = TRUE),
-#     allele_min = min(allele1_len, allele2_len, na.rm = TRUE),
-#     allele_max = max(allele1_len, allele2_len, na.rm = TRUE)
-#   ) %>%
-#   ungroup()
-#   
-#   data %>%
-#   rowwise() %>%
-#   mutate(
-#     molec_allele_len = list(sort(
-#       c(molec_allele1_len, molec_allele2_len),
-#       na.last = TRUE
-#     )),
-#     allele_len = list(sort(
-#       c(allele1_len, allele2_len),
-#       na.last = TRUE
-#     ))
-#   ) %>%
-#   ungroup() %>% 
-#   select(
-#     -molec_allele1_len, -molec_allele2_len,
-#     -allele1_len, -allele2_len
-#   )
+# analysis = 'best'
+# old.data <- read_tsv("old/pathogenic_results.backup.tsv")
+# vamos.old = subset(old.data, tool == 'vamos')
 
-## Pathogenic loci "strip" plot
+# # Replace new vamos with old vamos
+# data = subset(data, tool != 'vamos')
+# data = rbind(data, vamos.old)
+
+prep_data <- function(mydata) {
+  # Offset PABPN1 molecular size +4 to match STRchive coordinates
+  mydata[mydata$gene == 'PABPN1','molec_allele1_len'] = 4*3 + mydata[mydata$gene == 'PABPN1','molec_allele1_len']
+  mydata[mydata$gene == 'PABPN1','molec_allele2_len'] = 4*3 + mydata[mydata$gene == 'PABPN1','molec_allele2_len']
+  
+  mydata$tool_allele_max = pmax(mydata$allele1_len, mydata$allele2_len, na.rm = T)
+  mydata$tool_allele_min = pmin(mydata$allele1_len, mydata$allele2_len, na.rm = T)
+  mydata$molec_allele_max = pmax(mydata$molec_allele1_len, mydata$molec_allele2_len, na.rm = T)
+  mydata$allele_max_diff = mydata$tool_allele_max - mydata$molec_allele_max
+  mydata$gene_sample = factor(interaction(mydata$gene, mydata$sample, sep = " | ", drop = TRUE))
+  mydata$molec_type[mydata$molec_type == "Unknown"] = NA
+  
+  return(mydata)
+}
+
+data = prep_data(data)
+default.data = prep_data(default.data)
+
+################################
+# Pathogenic loci "strip" plot
+################################
 
 # Positions of shaded rectangles
 pathogenic_ranges <- data.frame(
-  gene = c("HTT", "RFC1", "ATXN1", 
-                  "C9orf72", "DMPK", "FMR1",
-                  "FXN", "NOTCH2NLC", "PABPN1"),
-  path_min = c(36, 400, 39,
-           31, 50, 201,
+  gene = c(
+          "HTT", "RFC1", "ATXN1", 
+          "C9orf72", "DMPK", 
+          "FMR1", "FMR1",
+          "FXN", "NOTCH2NLC", "PABPN1"),
+  path_min = c(
+           36, 400, 39,
+           31, 50, 
+           45, 201,
            56, 66, 12),
-  path_max = c(250, 2750, 91,
-           4088, 4000, 2000,
+  path_max = c(
+           250, 2750, 91,
+           4088, 4000, 
+           200, 2000,
            1700, 517, 18),
   motif_size = c(3, 5, 3,
-                 6, 3, 3,
-                 3, 3, 3)
+                 6, 3, 
+                 3, 3,
+                 3, 3, 3),
+  size_range = c("Pathogenic", "Pathogenic", "Pathogenic",
+                 "Pathogenic", "Pathogenic", 
+                 "Premutation", "Pathogenic",
+                 "Pathogenic", "Pathogenic", "Pathogenic")
 )
 pathogenic_ranges$xmin = pathogenic_ranges$path_min * pathogenic_ranges$motif_size
 pathogenic_ranges$xmax = pathogenic_ranges$path_max * pathogenic_ranges$motif_size
@@ -89,7 +99,7 @@ pathogenic_ranges = merge(pathogenic_ranges, data[,c("gene_sample", "gene")], al
 
 #shape_cycle <- c(21, 22, 23, 24, 25, 16, 17, 15)
 
-ggplot() +
+strip.plot = ggplot() +
   geom_tile(
     data = pathogenic_ranges,
     aes(
@@ -97,13 +107,13 @@ ggplot() +
       y = gene_sample,
       width  = xmax - xmin,
       height = 0.7,
-      fill = "Pathogenic range"
+      fill = size_range
     ),
     #fill = "grey85",
     color = NA
   ) + scale_fill_manual(
-    name = NULL,
-    values = c("Pathogenic range" = "grey90")
+    name = "Allele size range",
+    values = c("Premutation" = "grey95", "Pathogenic" = "grey85")
   ) +
   geom_point(
     data = data,
@@ -120,17 +130,19 @@ ggplot() +
   geom_jitter(
     data = data,
     aes(x = allele1_len, y = gene_sample, color = tool),
-    size = 2, width = 0.3, height = 0.5, alpha = 0.8
+    size = 2, alpha = 0.8#, width = 0.3, height = 0.5
   ) +
   geom_jitter(
     data = data,
     aes(x = allele2_len, y = gene_sample, color = tool),
-    size = 2, width = 0.3, height = 0.5, alpha = 0.8
+    size = 2, alpha = 0.8#, width = 0.3, height = 0.5
   ) +
   theme_bw() +
   theme(
     panel.grid.major.y = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position=c(-0.21,0.86),
+    strip.text = element_blank()
   ) +
   labs(
     x = "Allele size (bp)",
@@ -152,303 +164,216 @@ ggplot() +
     ), na.translate = FALSE
   ) + 
   scale_color_manual(
-    values = tool_colors,
-    labels = tool_labels
+    values = tool_cols,
+    breaks = tool_levels,
+    labels = tool_labels[tool_levels],
+    name = "Tool",
+    drop = FALSE
   )
 
-ggsave('pathogenic_gene_strip.pdf', height = 12, width = 10) 
+#ggsave(paste0('pathogenic_gene_strip.', analysis, '.pdf'), height = 12, width = 10) 
 
+################################
+# Calculate sensitivity
+################################
+# Sensitivity is here defined as identifying at least one pathogenic-sized allele
+# in heterozygous samples and two in homozygous expanded samples
 
+# # Build new df to subset to just those samples with pathogenic expansions
+# sensitivity_path_ranges <- unique(pathogenic_ranges[,c("gene", "path_min", "motif_size")]) %>%
+#   group_by(gene) %>%
+#   slice_max(path_min, with_ties = FALSE) %>%
+#   ungroup()
+# 
+# data_path = merge(data, sensitivity_path_ranges, all.x = T, by = 'gene')
+# # Divide all alleles by motif size to get into the same context as pathogenic thresholds
+# allele_cols = c("molec_allele1_len","molec_allele2_len","allele1_len","allele2_len","tool_allele_max","tool_allele_min")
+# data_path[,allele_cols] = round(data_path[,allele_cols]/data_path$motif_size)
+# # Different pathogenic threshold for premutation samples
+# premutation_samples = c("NA06905", "CD00014")
+# data_path$path_min[data_path$sample %in% premutation_samples] = unique(pathogenic_ranges$path_min[pathogenic_ranges$size_range == "Premutation" & pathogenic_ranges$gene == "FMR1"])
+# 
+# # Remove samples with benign alleles
+# #data_path = subset(data_path, molec_allele_max >= path_min)
+# controls = c("R210029", "NA06890", "NA06893", "CD00022")
+# data_path = data_path[!(data_path$sample %in% controls),]
+# 
+# # Simplify data frame
+# data_path = data_path[,c("gene", "tool", "sample",  "gene_sample", 
+#                                                                "motif_size", "path_min", 
+#                                                                "molec_allele1_len", "molec_allele2_len",
+#                                                                "allele1_len", "allele2_len", 
+#                                                                "tool_allele_max", "tool_allele_min")]
+# 
+# 
+# # Count samples with expansions or premutations
+# affected_samples_count = length(unique(data_path$sample))
+# 
+# data_path$TP = data_path$tool_allele_max >= data_path$path_min
+# # homozygous samples
+# hom_samples = c("NA15850","R190082","R210005","R210020","R210023")
+# data_path$TP[data_path$sample %in% hom_samples] = (data_path$tool_allele_min >= data_path$path_min)[data_path$sample %in% hom_samples]
+# 
+# # Calculate per-sample TPs
+# group_by(data_path, tool, sample) %>% slice_max(tool, with_ties = FALSE) %>% ungroup() -> per_sample_TPs
+# 
+# ## Write overall sensitivity to table
+# group_by(per_sample_TPs,tool) %>%
+#   summarise(sensitivity = round(sum(TP)/affected_samples_count, digits = 2)) -> sensitivity
 
-plot_data <- subset(data, gene %in% c('DMPK', 'FMR1', 'FXN', 'HTT', 'RFC1'))
-
-facet_limits <- plot_data %>%
-  group_by(gene) %>%
-  # Find the absolute min and max considering both columns
-  summarize(
-    min_val = min(c(molec_allele_max, tool_allele_max), na.rm = TRUE),
-    max_val = max(c(molec_allele_max, tool_allele_max), na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  # Duplicate these values for both x and y mapping
-  pivot_longer(cols = c(min_val, max_val), values_to = "range_val")
-
-ggplot(plot_data, 
-       aes(x = molec_allele_max, y = tool_allele_max, 
-                 colour = tool, shape = molec_type)) + 
-  geom_blank(data = facet_limits, aes(x = range_val, y = range_val), inherit.aes = FALSE) +
+calc_TPs <- function(in.data, pathogenic_ranges) {
+  # Build new df to subset to just those samples with pathogenic expansions
+  sensitivity_path_ranges <- unique(pathogenic_ranges[,c("gene", "path_min", "motif_size")]) %>%
+    group_by(gene) %>%
+    slice_max(path_min, with_ties = FALSE) %>%
+    ungroup()
   
-  geom_point() + geom_abline() + 
-  labs(x = "Molecular test, largest allele size (bp)", y = "Tool, largest allele size (bp)",
-       shape = "Molecular test", color = "Tool") +
-  theme(aspect.ratio = 1) +
-  scale_shape_manual(
-    values = rep(
-      c(15, 17),
-    ), na.translate = FALSE
-  ) +
-  scale_color_manual(
-    values = tool_colors,
-    labels = tool_labels
-  ) +
-  facet_wrap(~gene, scales = "free") 
-
-ggsave('pathogenic_scatter.pdf', height = 7, width = 12) 
-
-
-## Calculate sensitivity (here defined as identifying at least one pathogenic-sized allele in affected sample)
-# Subset data to just those samples with pathogenic expansions
-data_path = merge(data, unique(pathogenic_ranges[,c("gene", "path_min")]), all.x = T, by = 'gene')
-data_path = subset(data_path, molec_allele_max >= path_min)[,c("gene", "tool", "sample", "path_min", 
-                                                   "molec_allele1_len", "molec_allele2_len",
-                                                   "allele1_len", "allele2_len", 
-                                                   "tool_allele_max")]
-affected_samples_count = length(unique(data_path$sample))
-data_path$TP = data_path$tool_allele_max >= data_path$path_min
-group_by(data_path, tool) %>% summarise(sum(TP)/affected_samples_count)
-
-# Define set of preferred motifs
-get_canonical <- function(x, preferred = c("CAG", "CTG", "CGG", "AAGGG", "GGGGCC")) {
-  if (is.na(x) || x == "") return(x)
+  data_path = merge(in.data, sensitivity_path_ranges, all.x = T, by = 'gene')
+  # Divide all alleles by motif size to get into the same context as pathogenic thresholds
+  allele_cols = c("molec_allele1_len","molec_allele2_len","allele1_len","allele2_len","tool_allele_max","tool_allele_min")
+  data_path[,allele_cols] = round(data_path[,allele_cols]/data_path$motif_size)
+  # Different pathogenic threshold for premutation samples
+  premutation_samples = c("NA06905", "CD00014")
+  data_path$path_min[data_path$sample %in% premutation_samples] = unique(pathogenic_ranges$path_min[pathogenic_ranges$size_range == "Premutation" & pathogenic_ranges$gene == "FMR1"])
   
-  # Generate all circular rotations
-  n <- nchar(x)
-  s_dup <- paste0(x, x)
-  rotations <- sapply(1:n, function(i) substr(s_dup, i, i + n - 1))
+  # Remove samples with benign alleles
+  #data_path = subset(data_path, molec_allele_max >= path_min)
+  controls = c("R210029", "NA06890", "NA06893", "CD00022")
+  data_path = data_path[!(data_path$sample %in% controls),]
   
-  # 2. Check if any rotation is in your preferred list
-  match <- intersect(rotations, preferred)
+  # Simplify data frame
+  data_path = data_path[,c("gene", "tool", "sample",  "gene_sample", 
+                           "motif_size", "path_min", 
+                           "molec_allele1_len", "molec_allele2_len",
+                           "allele1_len", "allele2_len", 
+                           "tool_allele_max", "tool_allele_min")]
   
-  if (length(match) > 0) {
-    return(match[1]) # Return the first matching preferred motif found
-  } else {
-    return(min(rotations)) # Fallback to alphabetical min if no match
-  }
+  
+  # Count samples with expansions or premutations
+  affected_samples_count = length(unique(data_path$sample))
+  
+  data_path$TP = data_path$tool_allele_max >= data_path$path_min
+  # homozygous samples
+  hom_samples = c("NA15850","R190082","R210005","R210020","R210023")
+  data_path$TP[data_path$sample %in% hom_samples] = (data_path$tool_allele_min >= data_path$path_min)[data_path$sample %in% hom_samples]
+  
+  # Calculate per-sample TPs
+  group_by(data_path, tool, sample) %>% slice_max(tool, with_ties = FALSE) %>% ungroup() -> per_sample_TPs
+  
+  return(per_sample_TPs)
 }
 
-# Count complete non-overlapping motifs of length n
-count_motifs <- function(sequence, n, trim_incomplete = FALSE) {
+calc_sensitivity <- function(in.data, pathogenic_ranges) {
+  # Build new df to subset to just those samples with pathogenic expansions
+  sensitivity_path_ranges <- unique(pathogenic_ranges[,c("gene", "path_min", "motif_size")]) %>%
+    group_by(gene) %>%
+    slice_max(path_min, with_ties = FALSE) %>%
+    ungroup()
   
-  if (is.na(sequence) || is.na(n)) {
-    return(NA)
-  }
+  data_path = merge(in.data, sensitivity_path_ranges, all.x = T, by = 'gene')
+  # Divide all alleles by motif size to get into the same context as pathogenic thresholds
+  allele_cols = c("molec_allele1_len","molec_allele2_len","allele1_len","allele2_len","tool_allele_max","tool_allele_min")
+  data_path[,allele_cols] = round(data_path[,allele_cols]/data_path$motif_size)
+  # Different pathogenic threshold for premutation samples
+  premutation_samples = c("NA06905", "CD00014")
+  data_path$path_min[data_path$sample %in% premutation_samples] = unique(pathogenic_ranges$path_min[pathogenic_ranges$size_range == "Premutation" & pathogenic_ranges$gene == "FMR1"])
   
-  sequence <- gsub("\\s+", "", sequence)
-  seq_len <- nchar(sequence)
+  # Remove samples with benign alleles
+  #data_path = subset(data_path, molec_allele_max >= path_min)
+  controls = c("R210029", "NA06890", "NA06893", "CD00022")
+  data_path = data_path[!(data_path$sample %in% controls),]
   
-  if (n > seq_len) {
-    return(NA)
-  }
+  # Simplify data frame
+  data_path = data_path[,c("gene", "tool", "sample",  "gene_sample", 
+                           "motif_size", "path_min", 
+                           "molec_allele1_len", "molec_allele2_len",
+                           "allele1_len", "allele2_len", 
+                           "tool_allele_max", "tool_allele_min")]
   
-  # Trim trailing incomplete motif if requested
-  if (trim_incomplete) {
-    usable_len <- floor(seq_len / n) * n
-    sequence <- substr(sequence, 1, usable_len)
-    seq_len <- nchar(sequence)
-  }
   
-  # Extract non-overlapping motifs
-  starts <- seq(1, seq_len - n + 1, by = n)
-  motifs <- substring(sequence, starts, starts + n - 1)
+  # Count samples with expansions or premutations
+  affected_samples_count = length(unique(data_path$sample))
   
-  # Run-length encoding
-  r <- rle(motifs)
+  data_path$TP = data_path$tool_allele_max >= data_path$path_min
+  # homozygous samples
+  hom_samples = c("NA15850","R190082","R210005","R210020","R210023")
+  data_path$TP[data_path$sample %in% hom_samples] = (data_path$tool_allele_min >= data_path$path_min)[data_path$sample %in% hom_samples]
   
-  data.frame(
-    motif = r$values,
-    run_length = r$lengths,
-    stringsAsFactors = FALSE
-  )
-}
-
-count_motifs <- function(sequence, n, min_repeats = 2) {
+  # Calculate per-sample TPs
+  group_by(data_path, tool, sample) %>% slice_max(tool, with_ties = FALSE) %>% ungroup() -> per_sample_TPs
   
-  if (is.na(sequence) || is.na(n)) {
-    return(NA)
-  }
-  
-  sequence <- gsub("\\s+", "", sequence)
-  seq_len <- nchar(sequence)
-  
-  if (n > seq_len) {
-    return(NA)
-  }
-  
-  # Step 1: count all sliding-window motifs
-  starts <- 1:(seq_len - n + 1)
-  motifs <- substring(sequence, starts, starts + n - 1)
-  motif_counts <- sort(table(motifs), decreasing = TRUE)
-  
-  # Keep motifs that occur at least min_repeats times
-  valid_motifs <- names(motif_counts[motif_counts >= min_repeats])
-  
-  if (length(valid_motifs) == 0) {
-    return(data.frame(motif = sequence, run_length = 1))
-  }
-  
-  results <- list()
-  i <- 1
-  
-  while (i <= seq_len) {
     
-    matched <- FALSE
+  ## Write overall sensitivity to table
+  group_by(per_sample_TPs,tool) %>%
+  summarise(sensitivity = round(sum(TP)/affected_samples_count, digits = 2)) -> sensitivity
     
-    # Try matching any valid motif (in order of frequency)
-    if (i <= seq_len - n + 1) {
-      for (motif in valid_motifs) {
-        if (substr(sequence, i, i + n - 1) == motif) {
-          
-          run_len <- 0
-          
-          while (i <= seq_len - n + 1 &&
-                 substr(sequence, i, i + n - 1) == motif) {
-            run_len <- run_len + 1
-            i <- i + n
-          }
-          
-          results[[length(results) + 1]] <-
-            data.frame(motif = motif,
-                       run_length = run_len,
-                       stringsAsFactors = FALSE)
-          
-          matched <- TRUE
-          break
-        }
-      }
-    }
-    
-    # If no valid motif matched → accumulate interruption
-    if (!matched) {
-      start_int <- i
-      
-      while (i <= seq_len &&
-             !(i <= seq_len - n + 1 &&
-               any(substr(sequence, i, i + n - 1) == valid_motifs))) {
-        i <- i + 1
-      }
-      
-      interruption_seq <- substr(sequence, start_int, i - 1)
-      
-      results[[length(results) + 1]] <-
-        data.frame(motif = interruption_seq,
-                   run_length = 1,
-                   stringsAsFactors = FALSE)
-    }
-  }
-  
-  t = do.call(rbind, results)
-  #return(summarize_repeat_structure(do.call(rbind, results)))
-  
-  #return(arrange(t, desc(run_length))[1,])
-  l = list(names(motif_counts[1]), motif_counts[1])
-  
-  #give names to elements of list
-  names(l) <- c('motif', 'count') 
-  return(l)
-}
-
-summarize_repeat_structure <- function(run_df) {
-  
-  if (is.null(run_df) || all(is.na(run_df))) {
-    return(NA)
-  }
-  
-  if (!all(c("motif", "run_length") %in% colnames(run_df))) {
-    stop("Input must have columns 'motif' and 'run_length'")
-  }
-  
-  # Determine repeat motif length (assume most common length > 1)
-  motif_lengths <- nchar(run_df$motif)
-  n <- as.numeric(names(sort(table(motif_lengths[motif_lengths > 1]),
-                             decreasing = TRUE))[1])
-  
-  # Separate repeat motifs from interruptions
-  is_repeat <- nchar(run_df$motif) == n
-  
-  repeat_df <- run_df[is_repeat, ]
-  interruption_df <- run_df[!is_repeat, ]
-  
-  # Sum total occurrences per motif
-  repeat_counts <- aggregate(run_length ~ motif,
-                             data = repeat_df,
-                             sum)
-  
-  # Count interruption blocks
-  n_interruptions <- nrow(interruption_df)
-  
-  return(n_interruptions)
-  
-  # list(
-  #   motif_counts = repeat_counts,
-  #   n_interruptions = n_interruptions
-  # )
+  return(sensitivity)
 }
 
 
+sensitivity.minreads = calc_sensitivity(data, pathogenic_ranges)
+colnames(sensitivity.minreads) = c('tool', 'minreads')
+sensitivity.minreads$tool[sensitivity.minreads$tool == 'vamos'] = 'vamos v3.0.5'
+sensitivity.minreads$tool[sensitivity.minreads$tool == 'vamos_old'] = 'vamos v2.1.7'
 
-data = merge(data, unique(pathogenic_ranges[,c("gene", "motif_size")]), all.x = T, by = 'gene')
-data <- data %>%
-  mutate(
-    allele1_main = map2(allele1_seq, motif_size,
-                                    ~ count_motifs(.x, .y)),
-    allele2_main = map2(allele2_seq, motif_size,
-                                    ~ count_motifs(.x, .y))
-  ) %>%
-      # Splits the named list into columns with a prefix
-      unnest_wider(allele1_main, names_sep = "_") %>%
-      unnest_wider(allele2_main, names_sep = "_") %>%
-  select(-ends_with("main_1"))
+sensitivity.default = calc_sensitivity(default.data, pathogenic_ranges)
+colnames(sensitivity.default) = c('tool', 'default')
+sensitivity.default$tool[sensitivity.default$tool == 'vamos'] = 'vamos v3.0.5'
+sensitivity.default$tool[sensitivity.default$tool == 'vamos_old'] = 'vamos v2.1.7'
 
-data <- data %>%
-  mutate(
-    allele1_main_prop = (allele1_main_count * motif_size)/allele1_len,
-    allele2_main_prop = (allele2_main_count * motif_size)/allele2_len
-  )
+sensitivity.table = merge(sensitivity.default, sensitivity.minreads, all = T)
+sensitivity.table$default[sensitivity.table$tool == 'vamos v2.1.7'] = sensitivity.table$minreads[sensitivity.table$tool == 'vamos v2.1.7']
+sensitivity.table$minreads[sensitivity.table$tool %in% c('vamos v2.1.7', 'vamos v3.0.5')] = NA
+sensitivity.table$default[sensitivity.table$tool == 'longtr']  = 0
 
-data <- data %>%
-  mutate(
-    allele1_main_motif = map_chr(allele1_main_motif, get_canonical),
-    allele1_main_motif = map_chr(allele2_main_motif, get_canonical)
-  )
+sensitivity.table$minreads = scales::percent(sensitivity.table$minreads)
+sensitivity.table$default = scales::percent(sensitivity.table$default)
 
+write_tsv(sensitivity.table, 'Sensitivity.tsv')
 
+# Plot the table
+library(ggpubr)
+
+sensitivity.table.plot = ggtexttable(sensitivity.table, rows = NULL, 
+                                theme = ttheme("light", base_size = 16, padding = unit(c(5, 5), "mm")))
 
 
+## Plot all the genotypes coloured by TP true/false
+per_sample_TPs = calc_TPs(data, pathogenic_ranges)
+# Set plotting order of everything
+per_sample_TPs$gene_sample = factor(per_sample_TPs$gene_sample, levels = sort(levels(per_sample_TPs$gene_sample), decreasing = T)) 
+# Create a molecular genotype for plotting
+per_sample_TPs = unite(per_sample_TPs, "molec", molec_allele1_len, molec_allele2_len, sep = "/", na.rm = TRUE, remove = FALSE)
+per_sample_TPs = unite(per_sample_TPs, "text_genotype", allele1_len, allele2_len, sep = "/", na.rm = TRUE, remove = FALSE)
 
-  # ) %>%
-  # mutate(allele1_interruptions = map(allele1_motifs_counts,
-  #                               ~ summarize_repeat_structure(.x)),
-  #        allele2_interruptions = map(allele2_motifs_counts,
-  #                               ~ summarize_repeat_structure(.x))
-  #        
-  #        )
+plot_TPs = subset(per_sample_TPs, tool != "vamos")
+plot_TPs$tool[plot_TPs$tool == 'vamos_old'] = 'vamos'
+plot.sensitivity.minreads = sensitivity.minreads
+plot.sensitivity.minreads$tool[plot.sensitivity.minreads$tool == 'vamos v2.1.7'] = 'vamos'
+plot.sensitivity.minreads$minreads = scales::percent(plot.sensitivity.minreads$minreads)
+x_axis_order = c("pathogenic\nmin", "molec", sort(unique(c(plot_TPs$tool, "longtr"))))
 
-ggplot(data) + 
-  geom_jitter(aes(y = gene_sample, x = allele1_main_prop,
-                 color = tool),
-              width = 0.01, height = 0.3, alpha = 0.8) +
-  geom_jitter(aes(y = gene_sample, x = allele2_main_prop,
-                 color = tool),
-              width = 0.01, height = 0.3, alpha = 0.8) +
-  scale_color_manual(
-    values = tool_colors,
-    labels = tool_labels
-  ) +   
-  facet_wrap(
-    ~gene,
-    scales = "free",
-    space = "free_y",
-    ncol = 1
+sensitivity.plot = ggplot(plot_TPs, aes(x = tool, y = gene_sample)) +
+  geom_tile(aes(fill = TP)) + 
+  geom_tile(aes(y = 'Total sensitivity', fill = 'Total sensitivity')) +
+  geom_text(aes(label = text_genotype)) + 
+  geom_text(aes(x = "pathogenic\nmin", label = path_min)) +
+  geom_text(aes(x = "molec", label = molec)) +
+  geom_text(data = plot.sensitivity.minreads, aes(y = 'Total sensitivity', x = tool, label = minreads)) +
+  labs(y = 'Gene | Sample', x = "Method (allele sizes in motifs)") + 
+  scale_x_discrete(limits = x_axis_order) +
+  scale_fill_manual(
+    values = c("#98df8a", "#ff9896", "#aec7e8"),
+    labels = c("True positive", "False negative", "Total sensitivity"),
+    breaks = c("TRUE", "FALSE", "Total sensitivity")
   ) +
-  scale_y_discrete(drop = TRUE) 
+  theme(legend.position="top", legend.title = element_blank())
 
-ggsave('pathogenic_main_motif.pdf', height = 14, width = 10) 
+ggsave('Sensitivity.pdf', sensitivity.plot, height = 8, width = 12)
 
-ggplot(data) + 
-  geom_jitter(aes(color = allele1_main_motif, x = allele1_main_prop, y = gene_sample)) + 
-  geom_jitter(aes(color = allele2_main_motif, x = allele2_main_prop, y = gene_sample)) + 
-  facet_wrap(
-  ~gene,
-  scales = "free",
-  ) +
-  scale_y_discrete(drop = TRUE, na.translate = FALSE) 
+left.panel = plot_grid(sensitivity.table.plot, sensitivity.plot, labels = c("A", "B"), 
+                       ncol = 1, nrow = 2, rel_heights = c(1, 1.5),
+                       align = 'h', axis = 'l')
+multipanel.fig <- plot_grid(left.panel, strip.plot, labels = c("", "C"), ncol = 2, nrow = 1, rel_widths = c(1, 1))
+ggsave('Pathogenic_figure.pdf', plot = multipanel.fig, height = 16, width = 21)
+

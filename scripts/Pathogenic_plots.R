@@ -80,10 +80,17 @@ pathogenic_ranges <- data.frame(
                  "Premutation", "Pathogenic",
                  "Pathogenic", "Pathogenic", "Pathogenic")
 )
-pathogenic_ranges$xmin = pathogenic_ranges$path_min * pathogenic_ranges$motif_size
-pathogenic_ranges$xmax = pathogenic_ranges$path_max * pathogenic_ranges$motif_size
+pathogenic_ranges$xmin = pathogenic_ranges$path_min #* pathogenic_ranges$motif_size
+pathogenic_ranges$xmax = pathogenic_ranges$path_max #* pathogenic_ranges$motif_size
 
-gene_max_x <- data %>%
+# Add alleles in motif counts
+strip_data = merge(data, unique(pathogenic_ranges[c("gene", "motif_size")]), all.x = T, by = 'gene')
+
+# Divide all alleles by motif size to get into the same context as pathogenic thresholds
+allele_cols = c("molec_allele1_len","molec_allele2_len","allele1_len","allele2_len","tool_allele_max","tool_allele_min", "molec_allele_max")
+strip_data[,allele_cols] = round(strip_data[,allele_cols]/strip_data$motif_size)
+
+gene_max_x <- strip_data %>%
   summarise(
     max_x_val = max(tool_allele_max, molec_allele_max, na.rm = TRUE),
     .by = gene
@@ -95,9 +102,10 @@ pathogenic_ranges = merge(pathogenic_ranges, gene_max_x)
 pathogenic_ranges$xmax = pmin(pathogenic_ranges$xmax, pathogenic_ranges$max_x_val, na.rm = T)
 
 # Merge pathogenic ranges into main data
-pathogenic_ranges = merge(pathogenic_ranges, data[,c("gene_sample", "gene")], all.x = T, by = 'gene')
+pathogenic_ranges = merge(pathogenic_ranges, strip_data[,c("gene_sample", "gene")], all.x = T, by = 'gene')
 
-#shape_cycle <- c(21, 22, 23, 24, 25, 16, 17, 15)
+strip_data = unique(strip_data)
+pathogenic_ranges = unique(pathogenic_ranges)
 
 strip.plot = ggplot() +
   geom_tile(
@@ -116,24 +124,24 @@ strip.plot = ggplot() +
     values = c("Premutation" = "grey95", "Pathogenic" = "grey85")
   ) +
   geom_point(
-    data = data,
+    data = strip_data,
     aes(x = molec_allele1_len, y = gene_sample,
         shape = molec_type),
     size = 2,
   ) +
   geom_point(
-    data = data,
+    data = strip_data,
     aes(x = molec_allele2_len, y = gene_sample,
         shape = molec_type),
     size = 2,
   ) +
   geom_jitter(
-    data = data,
+    data = strip_data,
     aes(x = allele1_len, y = gene_sample, color = tool),
     size = 2, alpha = 0.8#, width = 0.3, height = 0.5
   ) +
   geom_jitter(
-    data = data,
+    data = strip_data,
     aes(x = allele2_len, y = gene_sample, color = tool),
     size = 2, alpha = 0.8#, width = 0.3, height = 0.5
   ) +
@@ -141,11 +149,11 @@ strip.plot = ggplot() +
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
-    legend.position=c(-0.21,0.86),
+    legend.position=c(-0.21,0.8),
     strip.text = element_blank()
   ) +
   labs(
-    x = "Allele size (bp)",
+    x = "Allele size (motifs)",
     y = NULL,
     shape = "Molecular test",
     color = "Tool"
@@ -353,6 +361,9 @@ plot.sensitivity.minreads$tool[plot.sensitivity.minreads$tool == 'vamos v2.1.7']
 plot.sensitivity.minreads$minreads = scales::percent(plot.sensitivity.minreads$minreads)
 x_axis_order = c("pathogenic\nmin", "molec", sort(unique(c(plot_TPs$tool, "longtr"))))
 
+# Sets default geom_text size to approximately 12pt
+update_geom_defaults("text", list(size = 12 / .pt))
+
 sensitivity.plot = ggplot(plot_TPs, aes(x = tool, y = gene_sample)) +
   geom_tile(aes(fill = TP)) + 
   geom_tile(aes(y = 'Total sensitivity', fill = 'Total sensitivity')) +
@@ -367,13 +378,19 @@ sensitivity.plot = ggplot(plot_TPs, aes(x = tool, y = gene_sample)) +
     labels = c("True positive", "False negative", "Total sensitivity"),
     breaks = c("TRUE", "FALSE", "Total sensitivity")
   ) +
-  theme(legend.position="top", legend.title = element_blank())
+  theme(legend.position="top", legend.title = element_blank(),
+        text = element_text(size = 14))
 
 ggsave('Sensitivity.pdf', sensitivity.plot, height = 8, width = 12)
 
-left.panel = plot_grid(sensitivity.table.plot, sensitivity.plot, labels = c("A", "B"), 
-                       ncol = 1, nrow = 2, rel_heights = c(1, 1.5),
+left.panel = plot_grid(sensitivity.table.plot, sensitivity.plot, 
+                       labels = c("A", "B"), 
+                       ncol = 1, nrow = 2, 
+                       rel_heights = c(1, 1.7),
                        align = 'h', axis = 'l')
-multipanel.fig <- plot_grid(left.panel, strip.plot, labels = c("", "C"), ncol = 2, nrow = 1, rel_widths = c(1, 1))
-ggsave('Pathogenic_figure.pdf', plot = multipanel.fig, height = 16, width = 21)
+multipanel.fig <- plot_grid(left.panel, strip.plot, 
+                            labels = c("", "C"), 
+                            ncol = 2, nrow = 1, 
+                            rel_widths = c(1, 1.2))
+ggsave('Pathogenic_figure.pdf', plot = multipanel.fig, height = 12, width = 20)
 

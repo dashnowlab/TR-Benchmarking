@@ -1,5 +1,3 @@
-*
-.*
 
 !/catalogs/
 !/catalogs/*
@@ -15,3 +13,5 @@
 !/scripts/
 !/scripts/**
 **/__pycache__/
+/scripts/VCF_comparisons/__pycache__
+.Rproj.user

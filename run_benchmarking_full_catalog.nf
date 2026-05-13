@@ -106,10 +106,10 @@ workflow {
     mosdepth(aligned_samples, ref)
     atarva(aligned_samples, ref, fai)
     medaka(aligned_samples, ref, fai)
-    straglr(aligned_samples, ref, fai)
-    strdust(aligned_samples, ref, fai)
+    //straglr(aligned_samples, ref, fai)
+    //strdust(aligned_samples, ref, fai)
     strkit(aligned_samples, ref, fai)
-    vamos(aligned_samples, ref, fai)
+    //vamos(aligned_samples, ref, fai)
 
 
     ch_chroms = Channel.of(
@@ -186,8 +186,8 @@ process mosdepth {
 process atarva {
     conda '/pl/active/dashnowlab/projects/TR-benchmarking/envs/atarva-0.5.0.yaml'
 
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h }
 
     publishDir variantDir + '/atarva', mode: 'copy'
@@ -216,8 +216,8 @@ process longTR_per_chrom {
     container 'community.wave.seqera.io/library/longtr:1.2--3a7af9434e146eab'
 
     cpus 1
-    memory { 32.GB }
-    time { 144.h }
+    memory { 16.GB }
+    time { 142.h }
 
     publishDir variantDir + '/longtr_chrom', mode: 'copy'
 
@@ -235,6 +235,7 @@ process longTR_per_chrom {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/tr_explorer_catalog/TR_catalog_for_LongTR.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
     MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
@@ -243,6 +244,7 @@ process longTR_per_chrom {
         --fasta ${ref} \\
         --max-tr-len \$MAX_TR_LEN \\
         --regions ${tr_regions} \\
+        ${haploid_args} \\
         --chrom ${chrom} \\
         --bams ${aln} \\
         --tr-vcf ${sample}.${chrom}.longTR.vcf.gz
@@ -283,8 +285,8 @@ process mergeLongTR {
 process straglr {
     container 'community.wave.seqera.io/library/straglr:1.5.5--d8ea229ed1f78ec0'
 
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h }
 
     publishDir variantDir + '/straglr', mode: 'copy'
@@ -309,8 +311,8 @@ process straglr {
 process strkit {
     container 'ghcr.io/davidlougheed/strkit:0.24.2'
     
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h }
 
     publishDir variantDir + '/strkit', mode: 'copy'
@@ -333,8 +335,8 @@ process strkit {
 }
 
 process strdust {
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h }
 
     publishDir variantDir + '/strdust', mode: 'copy'
@@ -366,8 +368,8 @@ process strdust {
 process vamos {
     conda 'envs/vamos-3.0.5.yaml'
 
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h }
 
     publishDir variantDir + '/vamos', mode: 'copy'
@@ -393,10 +395,10 @@ process vamos {
 }
 
 process medaka {
-    conda 'envs/medaka-2.1.1.yaml'
+    container '/pl/active/dashnowlab/work/ealiyev/SV/software/containers/medaka:2.2.1--py310h237e959_0.sif'
 
-    cpus { 24 }
-    memory { 32.GB }
+    cpus { 16 }
+    memory { 16.GB }
     time { 144.h  }
 
     publishDir variantDir + '/medaka', mode: 'copy'
@@ -416,7 +418,7 @@ process medaka {
     
 
     """
-    medaka tandem ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf --workers $task.cpus --sample_name ${sample} --debug
+    medaka tandem ${aln} ${ref} ${medaka_tr_regions} ${sex} ${sample}.medaka.vcf --workers $task.cpus --sample_name ${sample}
     """
 }
 

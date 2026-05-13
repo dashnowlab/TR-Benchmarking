@@ -105,11 +105,13 @@ workflow {
     print_aligned_samples(aligned_samples)
     mosdepth(aligned_samples, ref)
     atarva(aligned_samples, ref, fai)
+    atarva_amplicon(aligned_samples, ref, fai)
     longTR(aligned_samples, ref, fai)
     medaka(aligned_samples, ref, fai)
     straglr(aligned_samples, ref, fai)
     strdust(aligned_samples, ref, fai)
     strkit(aligned_samples, ref, fai)
+    strkit_hq_min_phred(aligned_samples, ref, fai)
     vamos(aligned_samples, ref, fai)
     vamos_old(aligned_samples, ref, fai)
 
@@ -210,6 +212,34 @@ process atarva {
 
     """
     /projects/ealiyev@xsede.org/software/anaconda/envs/atarva-0.5.0/bin/atarva -t $task.cpus -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram --min-reads 1 --karyotype ${karyotype} -o ${sample}.atarva.vcf
+    """
+}
+
+process atarva_amplicon {
+    conda '/pl/active/dashnowlab/projects/TR-benchmarking/envs/atarva-0.5.0.yaml'
+    //container 'dhaksnamoorthy/atarva:v0.3.1'
+
+    cpus { 8 * task.attempt }
+    memory { 16.GB * task.attempt }
+    time { 24.h * task.attempt }
+
+    publishDir variantDir + '/atarva_amplicon', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.atarva.amplicon.vcf"
+
+    script:
+    //def atarva_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/tr_explorer_catalog/TR_catalog_for_atarva.bed.gz'
+    def atarva_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.atarva.bed.gz'
+    
+
+    """
+    /projects/ealiyev@xsede.org/software/anaconda/envs/atarva-0.5.0/bin/atarva -t $task.cpus -f ${ref} -b ${aln} -r ${atarva_tr_regions} --format cram --min-reads 1 --amplicon --karyotype ${karyotype} -o ${sample}.atarva.amplicon.vcf
     """
 }
 
@@ -377,6 +407,33 @@ process strkit {
 
     """
     strkit call ${aln} --min-reads 1 --ploidy ${karyotype} --sex-chr ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit-min_read_1.vcf --processes $task.cpus --min-read-align-score 0.1
+    """
+}
+
+process strkit_hq_min_phred {
+    container 'ghcr.io/davidlougheed/strkit:0.24.2'
+    
+    cpus { 8 * task.attempt }
+    memory { 16.GB * task.attempt }
+    time { 24.h * task.attempt }
+
+    publishDir variantDir + '/strkit_hq_min_phred', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.strkit-min_read_1.hq_min_phred.vcf"
+
+    script:
+    //def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/tr_explorer_catalog/TR_catalog_for_strkit.bed'
+    def strkit_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.strkit.bed'
+    
+
+    """
+    strkit call ${aln} --min-reads 1 --ploidy ${karyotype} --sex-chr ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit-min_read_1.hq_min_phred.vcf --processes $task.cpus --min-read-align-score 0.1 --min-allele-reads 1 --hq --min-avg-phred 1
     """
 }
 

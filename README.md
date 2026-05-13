@@ -11,7 +11,7 @@ sbatch -J tr_bench_hg -p amilan --qos=long --time=6-23:00:00 --mem=2G --output=l
 
 sbatch -J tr_bench_hprc -p amilan --qos=long --time=6-23:00:00 --mem=2G --output=logs/%x_%j.out --error=logs/%x_%j.err --wrap="bash run_benchmarking_slurm.sh run_benchmarking_hprc.nf --list hprc_bam.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -w /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-HPRC/work_HPRC"
 
-sbatch -J tr_bench_deveson -p amilan --qos=normal --time=23:00:00 --mem=2G --output=logs/%x_%j.out --error=logs/%x_%j.err --wrap="bash run_benchmarking_slurm.sh run_benchmarking_deveson.nf --list deveson_bam_list_fixed.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -w /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/work_Deveson"
+sbatch -J tr_bench_deveson -p amilan --qos=normal --time=23:00:00 --mem=2G --output=logs/%x_%j.out --error=logs/%x_%j.err --wrap="bash run_benchmarking_slurm.sh run_benchmarking_deveson.nf --list deveson_bam_list_fixed.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -w /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson/work_Deveson -resume"
 
 sbatch -J tr_bench_deveson_default -p amilan --qos=normal --time=23:00:00 --mem=2G --output=logs/%x_%j.out --error=logs/%x_%j.err --wrap="bash run_benchmarking_slurm.sh run_benchmarking_deveson_default.nf --list deveson_bam_list_fixed.list --ref /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta -w /pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-V2-Deveson-default/work_Deveson_default"
 

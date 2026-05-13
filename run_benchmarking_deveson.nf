@@ -111,6 +111,7 @@ workflow {
     strdust(aligned_samples, ref, fai)
     strkit(aligned_samples, ref, fai)
     vamos(aligned_samples, ref, fai)
+    vamos_old(aligned_samples, ref, fai)
 
 
     // ch_chroms = Channel.of(
@@ -435,6 +436,35 @@ process vamos {
     """
     export LD_LIBRARY_PATH=\${CONDA_PREFIX}/lib:\$LD_LIBRARY_PATH
     /pl/active/dashnowlab/software/vamos-3.0.5/vamos/src/vamos --read -b ${aln} -r ${vamos_tr_regions} -s ${sample} -o ${sample}.vamos.vcf -S -Z -t $task.cpus
+    python3 ${fix_vcf} ${sample}.vamos.vcf ${sample}.vamos.fixed.vcf --ref ${ref}
+    """
+}
+
+process vamos_old {
+    conda 'envs/vamos-2.1.7.yaml'
+
+    cpus { 8 * task.attempt }
+    memory { 16.GB * task.attempt }
+    time { 8.h * task.attempt }
+
+    publishDir variantDir + '/vamos_old', mode: 'copy'
+
+    input:
+    tuple val(sample), path(aln), path(idx), val(karyotype)
+    path ref
+    path fai
+
+    output:
+    path "${sample}.vamos.vcf"
+    path "${sample}.vamos.fixed.vcf"
+
+    script:
+    def vamos_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.vamos.bed'
+    def fix_vcf         = "${projectDir}/scripts/fix-vcf-2.1.7.py"
+
+    """
+    export LD_LIBRARY_PATH=\${CONDA_PREFIX}/lib:\$LD_LIBRARY_PATH
+    /pl/active/dashnowlab/work/aavvaru/vamos/src/vamos --read -b ${aln} -r ${vamos_tr_regions} -s ${sample} -o ${sample}.vamos.vcf -S -t $task.cpus
     python3 ${fix_vcf} ${sample}.vamos.vcf ${sample}.vamos.fixed.vcf --ref ${ref}
     """
 }

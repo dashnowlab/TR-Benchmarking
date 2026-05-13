@@ -25,8 +25,9 @@ def main():
 
 def fix_row(row: str, fasta: pysam.FastaFile) -> str:
     """
-    Expects VCF with at least 10 columns:
-      CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE
+    Sample input data
+    #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  HG004.30x.haplotagged
+    chr1	2795086	.	N	<VNTR>	.	PASS	END=2795101;RU=A;SVTYPE=STR;ALTANNO_H1=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H1=15;ALTANNO_H2=0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0;LEN_H2=16;	GT:RS	1/2:AAAAAAAAAAAAAAA,AAAAAAAAAAAAAAAA
 
     Sample field assumed to be like:
       GT:ALLELE1:ALLELE2...

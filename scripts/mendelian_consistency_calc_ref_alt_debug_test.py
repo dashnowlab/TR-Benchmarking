@@ -48,7 +48,7 @@ def locus_key(
 
 
 # -----------------------------
-# Distance functions (NO Levenshtein)
+# Distance functions
 # -----------------------------
 def minkowski(a: ty.List[float], b: ty.List[float], power: int = 1) -> float:
     """power=1 -> Manhattan, power=2 -> Euclidean"""
@@ -110,18 +110,19 @@ def get_allele_seqs(v: cyvcf2.Variant) -> ty.Tuple[ty.Optional[str], ty.Optional
     return (a1, a2)
 
 
-def length_features(ref: str, a1: str, a2: str) -> ty.List[float]:
+def length_features(a1: str, a2: str) -> ty.List[float]:
     """
-    Sequence-derived "AL/AP-like" features in bp-space:
-      [L1, L2, dL1, dL2] where dL = L - Lref
+    FIX 1: Removed redundant dL features.
+    The original [L1, L2, dL1, dL2] was redundant because dL = L - Lref
+    (constant per locus), so dL added zero discriminative information and
+    inflated distances by a factor of 2.
+    Now returns just [L1, L2] in bp-space, analogous to the AL tag in TRGT.
     """
-    Lref = len(ref)
-    L1, L2 = len(a1), len(a2)
-    return [float(L1), float(L2), float(L1 - Lref), float(L2 - Lref)]
+    return [float(len(a1)), float(len(a2))]
 
 
 # -----------------------------
-# Trio inheritance minimization ("dropdown" selection)
+# Trio inheritance minimization
 # -----------------------------
 def parental_combos(
     mom_a: ty.Tuple[str, str],
@@ -141,16 +142,25 @@ def min_inheritance_len_distance(
     mom: ty.Tuple[str, str],
     dad: ty.Tuple[str, str],
     kid: ty.Tuple[str, str],
-    ref: str,
     power: int = 1,
+    consistency_threshold: float = 0.0,
 ) -> ty.Tuple[float, str, ty.Tuple[str, str], str]:
     """
-    Distance-only selection of best parental transmission and best kid ordering.
+    Distance-based selection of best parental transmission and best kid ordering.
+
+    FIX 2: Removed ref parameter — it was only used by the now-removed dL features.
+
+    FIX 3: Fixed d_flip initialization bug.
+    The original code had:
+        d_flip = dist if d_flip is not None else dist if d_flip is None else min(d_flip, dist)
+    The min() branch was unreachable (both conditions cover all cases), so d_flip
+    always ended up as the LAST distance seen, not the MINIMUM. Fixed to:
+        d_flip = dist if d_flip is None else min(d_flip, dist)
 
     Returns:
       (len_dist, parent_ht_label, kid_ht_pair, kid_ht_ordered)
     """
-    # Try both kid orderings
+    # Try both kid orderings and all parental combinations
     kid_orders = [
         (kid[0], kid[1], "as_is"),
         (kid[1], kid[0], "flipped"),
@@ -159,9 +169,9 @@ def min_inheritance_len_distance(
     best = None  # (dist, parent_label, kid_pair, order_tag)
 
     for k1, k2, order_tag in kid_orders:
-        kid_vec = length_features(ref, k1, k2)
+        kid_vec = length_features(k1, k2)
         for m_a, d_a, lab in parental_combos(mom, dad):
-            p_vec = length_features(ref, m_a, d_a)
+            p_vec = length_features(m_a, d_a)
             dist = minkowski(p_vec, kid_vec, power=power)
             cand = (dist, lab, (k1, k2), order_tag)
             if best is None or cand[0] < best[0]:
@@ -170,21 +180,23 @@ def min_inheritance_len_distance(
     assert best is not None
     best_dist, best_lab, best_kid_pair, _best_order_tag = best
 
-    # Ordering determinability (same idea as your old code):
-    # if best achievable distance differs between the two kid orderings -> ordered=T
+    # Compute minimum achievable distance for each kid ordering independently
+    # to determine whether allele phase can be resolved (kid_ht_ordered).
     d_as_is = None
-    kid_vec_as = length_features(ref, kid[0], kid[1])
+    kid_vec_as = length_features(kid[0], kid[1])
     for m_a, d_a, _lab in parental_combos(mom, dad):
-        p_vec = length_features(ref, m_a, d_a)
+        p_vec = length_features(m_a, d_a)
         dist = minkowski(p_vec, kid_vec_as, power=power)
+        # FIX 3 (as_is side — was already correct in original, kept for symmetry):
         d_as_is = dist if d_as_is is None else min(d_as_is, dist)
 
+    # FIX 3: d_flip bug fixed here
     d_flip = None
-    kid_vec_fl = length_features(ref, kid[1], kid[0])
+    kid_vec_fl = length_features(kid[1], kid[0])
     for m_a, d_a, _lab in parental_combos(mom, dad):
-        p_vec = length_features(ref, m_a, d_a)
+        p_vec = length_features(m_a, d_a)
         dist = minkowski(p_vec, kid_vec_fl, power=power)
-        d_flip = dist if d_flip is not None else dist if d_flip is None else min(d_flip, dist)
+        d_flip = dist if d_flip is None else min(d_flip, dist)  # FIXED
 
     kid_ht_ordered = "T" if d_as_is != d_flip else "F"
 
@@ -229,7 +241,6 @@ def multiway_merge_by_pos(
         yield tuple(out)
 
 
-
 def _alts_str(v: cyvcf2.Variant) -> str:
     alts = list(v.ALT) if v.ALT is not None else []
     return ",".join(alts) if alts else "."
@@ -258,10 +269,18 @@ def run(
     output_prefix: str = "seq-mc-",
     exclude_chroms: ty.List[str] = None,
     merge_key: str = "pos",
+    consistency_threshold: float = 0.0,
 ):
     """
     Sequence-length-feature Mendelian check using only REF/ALT/GT (NO INFO/FORMAT).
-    Consistency rule: len_dist == 0  -> consistent, else inconsistent.
+
+    FIX 4: consistency_threshold is now a parameter (default 0.0 = exact match).
+    For long-read tools (Medaka, STRdust, etc.) that may produce slightly varying
+    allele lengths for the same true allele, consider passing a small threshold
+    (e.g. --consistency-threshold 2) to avoid overcounting inconsistency.
+
+    FIX 5: symbolic ALT skips are now counted and reported per-kid so the
+    denominator difference across tools is visible and not silently hidden.
     """
     if exclude_chroms is None:
         exclude_chroms = ["chrX", "chrY"]
@@ -288,21 +307,24 @@ def run(
         "mom_a1_seq\tmom_a2_seq\t"
         "dad_a1_seq\tdad_a2_seq\t"
         "kid_a1_seq\tkid_a2_seq\t"
-        "Lref\t"
-        "mom_len\tmom_dlen\t"
-        "dad_len\tdad_dlen\t"
-        "kid_len\tkid_dlen\t"
+        "mom_L1\tmom_L2\t"
+        "dad_L1\tdad_L2\t"
+        "kid_L1\tkid_L2\t"
         "parent_ht\tmom_tx_seq\tdad_tx_seq\t"
         "kid_ht\tkid_ht_ordered\t"
-        "absdiff_L1\tabsdiff_L2\tabsdiff_dL1\tabsdiff_dL2\t"
+        "absdiff_L1\tabsdiff_L2\t"
         "distance_power_sum\tlen_dist\tmendelian"
     )
     print(header, file=fh)
 
-    # For summary / histogram
+    # Per-kid tracking: FIX 5
+    n_kids = len(kid_vcfs)
+    total_scored = [0] * n_kids
+    total_consistent = [0] * n_kids
+    total_skipped_symbolic = [0] * n_kids   # FIX 5: track symbolic ALT skips
+    total_skipped_missing = [0] * n_kids    # FIX 5: track missing GT skips
+
     len_dists_all: ty.List[float] = []
-    total_scored = 0
-    total_consistent = 0
 
     for recs in multiway_merge_by_pos(vcfs, merge_key=merge_key):
         mom, dad = recs[0], recs[1]
@@ -316,7 +338,6 @@ def run(
         chrom = mom.CHROM
         pos = mom.POS
         ref = mom.REF  # anchor REF from mom
-        Lref = len(ref)
 
         mom_a = get_allele_seqs(mom)
         dad_a = get_allele_seqs(dad)
@@ -328,31 +349,40 @@ def run(
         ):
             continue
 
-        mom_vec = length_features(ref, mom_a[0], mom_a[1])
-        dad_vec = length_features(ref, dad_a[0], dad_a[1])
-        mom_len = f"{int(mom_vec[0])},{int(mom_vec[1])}"
-        mom_dlen = f"{int(mom_vec[2])},{int(mom_vec[3])}"
-        dad_len = f"{int(dad_vec[0])},{int(dad_vec[1])}"
-        dad_dlen = f"{int(dad_vec[2])},{int(dad_vec[3])}"
+        mom_vec = length_features(mom_a[0], mom_a[1])
+        dad_vec = length_features(dad_a[0], dad_a[1])
 
         for i, kid in enumerate(kids):
             if kid is None:
                 continue
 
             kid_a = get_allele_seqs(kid)
+
+            # FIX 5: distinguish why a locus is skipped
             if kid_a[0] is None or kid_a[1] is None:
+                # Check if it's symbolic vs missing GT
+                try:
+                    g = kid.genotypes[0]
+                    a_idx, b_idx = int(g[0]), int(g[1])
+                    alts = list(kid.ALT) if kid.ALT is not None else []
+                    # If indices are valid but returned None -> symbolic ALT
+                    if a_idx >= 0 and b_idx >= 0:
+                        total_skipped_symbolic[i] += 1
+                    else:
+                        total_skipped_missing[i] += 1
+                except Exception:
+                    total_skipped_missing[i] += 1
                 continue
 
-            kid_vec = length_features(ref, kid_a[0], kid_a[1])
-            kid_len = f"{int(kid_vec[0])},{int(kid_vec[1])}"
-            kid_dlen = f"{int(kid_vec[2])},{int(kid_vec[3])}"
+            kid_vec = length_features(kid_a[0], kid_a[1])
 
+            # FIX 2: removed ref= argument (no longer needed after FIX 1)
             len_dist, parent_ht, kid_ht_pair, kid_ht_ordered = min_inheritance_len_distance(
                 (mom_a[0], mom_a[1]),
                 (dad_a[0], dad_a[1]),
                 (kid_a[0], kid_a[1]),
-                ref=ref,
                 power=power,
+                consistency_threshold=consistency_threshold,
             )
 
             # Reconstruct the chosen transmitted alleles based on parent_ht
@@ -363,24 +393,32 @@ def run(
             )
 
             # Parent vector and chosen kid vector for the reported best pairing
-            p_vec = length_features(ref, mom_tx, dad_tx)
-            k_vec = length_features(ref, kid_ht_pair[0], kid_ht_pair[1])
+            p_vec = length_features(mom_tx, dad_tx)
+            k_vec = length_features(kid_ht_pair[0], kid_ht_pair[1])
 
-            absdiff = [abs(p_vec[j] - k_vec[j]) for j in range(4)]
+            absdiff = [abs(p_vec[j] - k_vec[j]) for j in range(2)]
             dist_sum = minkowski_sum_only(p_vec, k_vec, power=power)
 
-            mendelian = "T" if len_dist == 0 else "F"
+            # FIX 4: use configurable threshold instead of hard-coded 0
+            mendelian = "T" if len_dist <= consistency_threshold else "F"
 
-            total_scored += 1
+            total_scored[i] += 1
             if mendelian == "T":
-                total_consistent += 1
+                total_consistent[i] += 1
             len_dists_all.append(len_dist)
 
-            # kid_ht: keep compact as allele lengths of the chosen ordering
+            # kid_ht: allele lengths of the chosen ordering
             kid_ht = f"{len(kid_ht_pair[0])},{len(kid_ht_pair[1])}"
 
             # kid_ID from VCF ID column (no logic use)
             kid_ID = kid.ID if kid.ID is not None and kid.ID != "" else "."
+
+            # FIX 6: corrected kid.REF == kid.REF typo -> mom.REF == kid.REF
+            if mom.REF != kid.REF:
+                sys.stderr.write(
+                    f"Warning: REF mismatch at {chrom}:{pos} between mom and kid {kid_ids[i]}. "
+                    f"mom={mom.REF} kid={kid.REF}\n"
+                )
 
             line = (
                 f"{chrom}\t{pos}\t{kid_ids[i]}\t{kid_ID}\t"
@@ -391,36 +429,38 @@ def run(
                 f"{mom_a[0]}\t{mom_a[1]}\t"
                 f"{dad_a[0]}\t{dad_a[1]}\t"
                 f"{kid_a[0]}\t{kid_a[1]}\t"
-                f"{Lref}\t"
-                f"{mom_len}\t{mom_dlen}\t"
-                f"{dad_len}\t{dad_dlen}\t"
-                f"{kid_len}\t{kid_dlen}\t"
+                f"{int(mom_vec[0])}\t{int(mom_vec[1])}\t"
+                f"{int(dad_vec[0])}\t{int(dad_vec[1])}\t"
+                f"{int(kid_vec[0])}\t{int(kid_vec[1])}\t"
                 f"{parent_ht}\t{mom_tx}\t{dad_tx}\t"
                 f"{kid_ht}\t{kid_ht_ordered}\t"
-                f"{int(absdiff[0])}\t{int(absdiff[1])}\t{int(absdiff[2])}\t{int(absdiff[3])}\t"
+                f"{int(absdiff[0])}\t{int(absdiff[1])}\t"
                 f"{dist_sum}\t{len_dist}\t{mendelian}"
             )
             print(line, file=fh)
 
     fh.close()
 
-    # Summary like original (percentage)
-    if total_scored > 0:
-        pct = (total_consistent / total_scored) * 100.0
-    else:
-        pct = 0.0
-    print(
-        f"[summary] scored_loci={total_scored} consistent={total_consistent} "
-        f"pct={pct:.2f}%",
-        file=sys.stderr,
-    )
+    # Per-kid summary (FIX 5: includes skipped counts)
+    print("[summary]", file=sys.stderr)
+    for i, kid_id in enumerate(kid_ids):
+        scored = total_scored[i]
+        consistent = total_consistent[i]
+        skipped_sym = total_skipped_symbolic[i]
+        skipped_mis = total_skipped_missing[i]
+        pct = (consistent / scored * 100.0) if scored > 0 else 0.0
+        print(
+            f"  kid={kid_id} scored={scored} consistent={consistent} "
+            f"pct={pct:.2f}% skipped_symbolic={skipped_sym} skipped_missing={skipped_mis}",
+            file=sys.stderr,
+        )
 
     # Histogram
     if len(len_dists_all) > 0:
         mname = "manhattan" if power == 1 else ("euclidean" if power == 2 else f"minkowski(p={power})")
         fig = px.histogram(x=len_dists_all)
         fig.update_layout(
-            xaxis_title=f"{mname} distance using length features [L1,L2,dL1,dL2] (min transmission)",
+            xaxis_title=f"{mname} distance using length features [L1,L2] (min transmission)",
             yaxis_title="count",
         )
         fig.write_html(out_html)
@@ -467,6 +507,17 @@ def parse_args(argv=None):
         default="pos",
         help="How to merge loci across VCFs: 'pos' (CHROM+POS, default) or 'id' (CHROM+ID).",
     )
+    # FIX 4: expose threshold as CLI argument
+    p.add_argument(
+        "--consistency-threshold",
+        type=float,
+        default=0.0,
+        help=(
+            "Maximum allele-length distance to call a locus Mendelian-consistent "
+            "(default: 0.0 = exact match). For long-read tools with noisy length "
+            "estimates consider a small value like 2."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -480,4 +531,5 @@ if __name__ == "__main__":
         output_prefix=args.out_prefix,
         exclude_chroms=args.exclude_chroms,
         merge_key=args.merge_key,
+        consistency_threshold=args.consistency_threshold,
     )

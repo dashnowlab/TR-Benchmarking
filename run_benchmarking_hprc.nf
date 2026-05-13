@@ -232,6 +232,7 @@ process longTR {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
     MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
@@ -241,6 +242,7 @@ process longTR {
         --fasta ${ref} \\
         --max-tr-len \$MAX_TR_LEN \\
         --regions ${tr_regions} \\
+        ${haploid_args} \\
         --bams ${aln} \\
         --tr-vcf ${sample}.longTR.vcf.gz
     """
@@ -271,6 +273,7 @@ process longTR_per_chrom {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
     MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
@@ -279,6 +282,7 @@ process longTR_per_chrom {
         --fasta ${ref} \\
         --max-tr-len \$MAX_TR_LEN \\
         --regions ${tr_regions} \\
+        ${haploid_args} \\
         --chrom ${chrom} \\
         --bams ${aln} \\
         --tr-vcf ${sample}.${chrom}.longTR.vcf.gz
@@ -335,10 +339,11 @@ process straglr {
 
     script:
     def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.strglr.bed'
+    def sex      = (karyotype == 'XX') ? 'f' : (karyotype == 'XY') ? 'm' : 'f'
     
 
     """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --genotype_in_size --nprocs $task.cpus
+    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --sex ${sex} --genotype_in_size --nprocs $task.cpus
     """
 }
 
@@ -365,7 +370,7 @@ process strkit {
     
 
     """
-    strkit call ${aln} --ploidy ${karyotype} --realign --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf --processes $task.cpus
+    strkit call ${aln} --ploidy ${karyotype} --realign --sex-chr ${karyotype} --ref ${ref} --loc ${strkit_tr_regions} --vcf ${sample}.strkit.vcf --processes $task.cpus
     """
 }
 

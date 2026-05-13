@@ -21,7 +21,7 @@ if (params.help) {
     System.exit(0)
 }
 
-def variantDir = '/pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-v2-Deveson-default/'
+def variantDir = '/pl/active/dashnowlab/projects/TR-benchmarking/benchmark-catalog-V2-Deveson-default/'
 
 // ----------------- Helpers -----------------
 def resolvePath = { String line ->
@@ -232,6 +232,7 @@ process longTR {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
     MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
@@ -241,6 +242,7 @@ process longTR {
         --fasta ${ref} \\
         --max-tr-len \$MAX_TR_LEN \\
         --regions ${tr_regions} \\
+        ${haploid_args} \\
         --bams ${aln} \\
         --bam-samps ${sample} \\
         --bam-libs ${sample} \\
@@ -273,14 +275,16 @@ process longTR_per_chrom {
     script:
     def alignment_params = [-1.0, -0.458675, -1.0, -0.458675, -0.00005800168, -1, -1]
     def tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.longtr.bed'
+    def haploid_args = (karyotype == 'XY') ? '--haploid-chrs chrX,chrY' : ''
 
     """
+    MAX_TR_LEN="\$(awk '{print \$3-\$2}' ${tr_regions} | sort -n | tail -n 1)";
     LongTR \\
         --alignment-params ${alignment_params.join(',')} \\
         --fasta ${ref} \\
-        --min-reads 1 \\
-        --max-tr-len 9976 \\
+        --max-tr-len \$MAX_TR_LEN \\
         --regions ${tr_regions} \\
+        ${haploid_args} \\
         --chrom ${chrom} \\
         --bams ${aln} \\
         --tr-vcf ${sample}.${chrom}.longTR.vcf.gz
@@ -337,10 +341,10 @@ process straglr {
 
     script:
     def straglr_tr_regions = '/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.strglr.bed'
-    
+    def sex      = (karyotype == 'XX') ? 'f' : (karyotype == 'XY') ? 'm' : 'f'
 
     """
-    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --genotype_in_size --nprocs $task.cpus
+    python3 /pl/active/dashnowlab/software/straglr/straglr.py ${aln} ${ref} ${sample} --loci ${straglr_tr_regions} --chroms 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y --sex ${sex} --genotype_in_size --nprocs $task.cpus
     """
 }
 

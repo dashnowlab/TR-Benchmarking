@@ -69,4 +69,8 @@ python3 mendelian_consistency_calc_ref_alt_debug_test.py \
 
 ## Extract pathogenic loci from VCFs
 
-## Plot 
+Example usage:
+
+```bash
+python extract_pathogenic.py --vcfs *.vcf --bed STRchive-disease-loci-v2.15.0.hg38.general.bed --metadata metadata_pathogenic_sciadv.abm5386.tsv --output pathogenic_results.tsv 
+```

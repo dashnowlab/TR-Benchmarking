@@ -16,6 +16,20 @@ tool_cols <- setNames(tableau_colors, tools) # <-- map colors by tool KEYS
 # analysis = 'minreads'
 data <- read_tsv("pathogenic_results.min_reads.tsv")
 
+# # Updated atarva and strkit settings
+# updated.data <- read_tsv("pathogenic_results.2026-03-12.tsv")
+# # rename tool names "atarva_amplicon" "strkit_hq_min_phred"
+# updated.data$tool <- sub("_.+", "", updated.data$tool)
+# 
+# # replace atarva
+# data = subset(data, tool != 'strkit')
+# data = rbind(data, subset(updated.data, tool == 'strkit'))
+
+# # Replace minreads atarva and strkit
+# data = subset(data, tool != 'atarva')
+# data = subset(data, tool != 'strkit')
+# data = rbind(data, updated.data)
+
 # # analysis = 'default'
 default.data <- read_tsv("pathogenic_results.default.tsv")
 # straglr.default = subset(default.data, tool == 'straglr')
@@ -149,8 +163,15 @@ strip.plot = ggplot() +
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
-    legend.position=c(-0.21,0.8),
-    strip.text = element_blank()
+    legend.position=c(-0.23,0.795),
+    strip.text = element_blank(),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 13),
+    axis.text.x = element_text(size = 13),
+    axis.text.y = element_text(size = 13),
+    axis.title.x = element_text(size = 14),
+    legend.background = element_blank(),
+    legend.box.background = element_blank()
   ) +
   labs(
     x = "Allele size (motifs)",
@@ -177,7 +198,7 @@ strip.plot = ggplot() +
     labels = tool_labels[tool_levels],
     name = "Tool",
     drop = FALSE
-  )
+  ) 
 
 #ggsave(paste0('pathogenic_gene_strip.', analysis, '.pdf'), height = 12, width = 10) 
 
@@ -361,7 +382,7 @@ plot.sensitivity.minreads$tool[plot.sensitivity.minreads$tool == 'vamos v2.1.7']
 plot.sensitivity.minreads$minreads = scales::percent(plot.sensitivity.minreads$minreads)
 x_axis_order = c("pathogenic\nmin", "molec", sort(unique(c(plot_TPs$tool, "longtr"))))
 
-# Sets default geom_text size to approximately 12pt
+# Sets default geom_text size to approximately 13pt
 update_geom_defaults("text", list(size = 12 / .pt))
 
 sensitivity.plot = ggplot(plot_TPs, aes(x = tool, y = gene_sample)) +
@@ -379,7 +400,16 @@ sensitivity.plot = ggplot(plot_TPs, aes(x = tool, y = gene_sample)) +
     breaks = c("TRUE", "FALSE", "Total sensitivity")
   ) +
   theme(legend.position="top", legend.title = element_blank(),
-        text = element_text(size = 14))
+        text = element_text(size = 14),
+        
+          
+          legend.text = element_text(size = 14),
+          axis.text.x = element_text(size = 13),
+          axis.text.y = element_text(size = 13),
+          axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = -15))
+        
+        )
 
 ggsave('Sensitivity.pdf', sensitivity.plot, height = 8, width = 12)
 
@@ -392,5 +422,5 @@ multipanel.fig <- plot_grid(left.panel, strip.plot,
                             labels = c("", "C"), 
                             ncol = 2, nrow = 1, 
                             rel_widths = c(1, 1.2))
-ggsave('Pathogenic_figure.pdf', plot = multipanel.fig, height = 12, width = 20)
+ggsave('Pathogenic_figure.pdf', plot = multipanel.fig, height = 14, width = 20)
 

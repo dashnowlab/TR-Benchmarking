@@ -30,5 +30,9 @@ sbatch -J tr_bench_full -p amilan --qos=long --time=7-00:00:00 --mem=2G --output
   - `--ref ...fasta` provides the GRCh38 reference path
 
 
+## Visualization
 
+### Figure 6: Sensitivity to and sizing of pathogenic expansions. 
+
+Script: `visualization/Pathogenic_plots.R`
 

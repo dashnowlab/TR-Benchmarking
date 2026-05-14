@@ -12,8 +12,9 @@ Fix BAM/CRAM headers before running STR genotyping tools.
 sh header_fixer.sh \
   /pl/active/dashnowlab/projects/TR-benchmarking/ont_bam.list \
   /pl/active/dashnowlab/projects/TR-benchmarking/fixed_header_bam/
+```
 
-2. Mendelian Consistency Calculations
+## 2. Mendelian Consistency Calculations
 
 The following commands calculate Mendelian consistency using trio VCFs:
 
@@ -21,6 +22,7 @@ Mother: HG003
 Father: HG004
 Child: HG002
 
+```bash
 python3 mendelian_consistency_calc_ref_alt_debug_test.py \
   --mom ../benchmark-catalog-v2-HG/strdust/HG003.30x.haplotagged.strdust.vcf \
   --dad ../benchmark-catalog-v2-HG/strdust/HG004.30x.haplotagged.strdust.vcf \
@@ -63,3 +65,12 @@ python3 mendelian_consistency_calc_ref_alt_debug_test.py \
   --dad ../benchmark-catalog-v2-HG/straglr/HG004.30x.haplotagged.vcf \
   --kids ../benchmark-catalog-v2-HG/straglr/HG002.30x.haplotagged.vcf \
   --out-prefix ../mendelian_consistency_calc/test/straglr-
+  ```
+
+## Extract pathogenic loci from VCFs
+
+Example usage:
+
+```bash
+python extract_pathogenic.py --vcfs *.vcf --bed STRchive-disease-loci-v2.15.0.hg38.general.bed --metadata metadata_pathogenic_sciadv.abm5386.tsv --output pathogenic_results.tsv 
+```

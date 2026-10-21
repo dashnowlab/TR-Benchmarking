@@ -311,14 +311,24 @@ def seq_difference_haploid(tool_genotype, assembly_allele):
 def process_sample(sample_id, vcf, aln, regions, tool, reference, karyotype, output):
 
     locus_motif = {}
-    with open(regions) as fh:
-        for line in fh:
-            line = line.strip().split('\t')
-            line[1] = int(line[1])
-            line[2] = int(line[2])
-            key = f"{line[0]}-{line[1]}-{line[2]}"
-            if tool == "longtr": key = f"{line[0]}-{int(line[1])-1}-{line[2]}"
-            locus_motif[key] = line[3]
+    if regions.endswith('.bed.gz'):
+        with pysam.TabixFile(regions) as tbx:
+            for line in tbx.fetch():
+                line = line.strip().split('\t')
+                line[1] = int(line[1])
+                line[2] = int(line[2])
+                key = f"{line[0]}-{line[1]}-{line[2]}"
+                if tool == "longtr": key = f"{line[0]}-{int(line[1])-1}-{line[2]}"
+                locus_motif[key] = line[3]
+    else:
+        with open(regions) as fh:
+            for line in fh:
+                line = line.strip().split('\t')
+                line[1] = int(line[1])
+                line[2] = int(line[2])
+                key = f"{line[0]}-{line[1]}-{line[2]}"
+                if tool == "longtr": key = f"{line[0]}-{int(line[1])-1}-{line[2]}"
+                locus_motif[key] = line[3]
 
     mat_aln = pysam.AlignmentFile(aln[0], "rb")
     pat_aln = pysam.AlignmentFile(aln[1], "rb")

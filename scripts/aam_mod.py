@@ -222,7 +222,7 @@ def parse_cigar(cigar_tuples, read_start, loci_keys, loci_coords, loci_variation
         loci_variations[each_key]['seq'] = read_seq[locus_qpos_range[idx][0]:locus_qpos_range[idx][1]]
 
 
-def assembly_alleles(bamfile, tbx, mapq_threshold = 5, flank_len = 0):
+def cooper(bamfile, tbx, mapq_threshold = 5, flank_len = 0):
     """
     Process the assembly alignment file to extract allele from the assembly of the locus
 
